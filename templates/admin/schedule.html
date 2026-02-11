@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Розклад {{ class_name }} - Швидкочислення{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Адмінка</a></li>
+                <li class="breadcrumb-item active">Розклад {{ class_name }}</li>
+            </ol>
+        </nav>
+
+        <h2 class="mb-4">
+            <i class="bi bi-calendar"></i> Розклад матчів: {{ class_name }}
+        </h2>
+
+        <div class="mb-3">
+            <a href="{{ url_for('bracket', class_name=class_name) }}" class="btn btn-outline-success">
+                <i class="bi bi-diagram-2"></i> Турнірна сітка
+            </a>
+        </div>
+
+        {% if matches %}
+        <form method="POST">
+            {% set current_round = namespace(value=0) %}
+            {% for match in matches %}
+                {% if match.round_number != current_round.value %}
+                    {% if current_round.value != 0 %}
+                        </tbody></table></div></div>
+                    {% endif %}
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">{{ match.round_name }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th width="80">Матч</th>
+                                        <th>Учасник 1</th>
+                                        <th></th>
+                                        <th>Учасник 2</th>
+                                        <th width="200">Дата/час</th>
+                                        <th width="120">Результат</th>
+                                        <th width="80">Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    {% set current_round.value = match.round_number %}
+                {% endif %}
+                
+                <tr {% if match.is_completed %}class="table-success"{% endif %}>
+                    <td>#{{ match.match_number }}</td>
+                    <td>
+                        {% if match.student1 %}
+                            {{ match.student1.full_name }}
+                        {% else %}
+                            <span class="text-muted">TBD</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">vs</td>
+                    <td>
+                        {% if match.student2 %}
+                            {{ match.student2.full_name }}
+                        {% elif match.student2_id is none and match.student1 %}
+                            <span class="text-warning">BYE</span>
+                        {% else %}
+                            <span class="text-muted">TBD</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <input type="datetime-local" 
+                               name="match_{{ match.id }}" 
+                               class="form-control form-control-sm"
+                               value="{% if match.scheduled_date %}{{ match.scheduled_date.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                    </td>
+                    <td>
+                        {% if match.is_completed %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> Готово
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning">Очікується</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if match.student1 and match.student2 %}
+                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                data-bs-toggle="modal" data-bs-target="#matchModal{{ match.id }}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            
+            {% if matches %}
+                </tbody></table></div></div>
+            {% endif %}
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Зберегти розклад
+                </button>
+            </div>
+        </form>
+
+        <!-- Модальні вікна для результатів -->
+        {% for match in matches %}
+        {% if match.student1 and match.student2 %}
+        <div class="modal fade" id="matchModal{{ match.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form action="{{ url_for('admin_update_match', match_id=match.id) }}" method="POST">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Результат матчу #{{ match.match_number }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Переможець</label>
+                                <select name="winner_id" class="form-select" required>
+                                    <option value="">Оберіть переможця</option>
+                                    <option value="{{ match.student1_id }}" 
+                                            {% if match.winner_id == match.student1_id %}selected{% endif %}>
+                                        {{ match.student1.full_name }}
+                                    </option>
+                                    <option value="{{ match.student2_id }}" 
+                                            {% if match.winner_id == match.student2_id %}selected{% endif %}>
+                                        {{ match.student2.full_name }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="form-label">Рахунок {{ match.student1.last_name }}</label>
+                                    <input type="number" name="score1" class="form-control" 
+                                           value="{{ match.score1 or '' }}" min="0">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Рахунок {{ match.student2.last_name }}</label>
+                                    <input type="number" name="score2" class="form-control" 
+                                           value="{{ match.score2 or '' }}" min="0">
+                                </div>
+                            </div>
+                            <div class="mb-3 mt-3">
+                                <label class="form-label">Примітки</label>
+                                <textarea name="notes" class="form-control" rows="2">{{ match.notes or '' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                            <button type="submit" class="btn btn-primary">Зберегти</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> 
+            Спочатку потрібно провести жеребкування.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

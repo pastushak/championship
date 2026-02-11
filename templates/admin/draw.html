@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Жеребкування {{ class_name }} - Швидкочислення{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Адмінка</a></li>
+                <li class="breadcrumb-item active">Жеребкування {{ class_name }}</li>
+            </ol>
+        </nav>
+
+        <h2 class="mb-4">
+            <i class="bi bi-shuffle"></i> Жеребкування: {{ class_name }}
+        </h2>
+
+        <div class="alert alert-info">
+            <h5><i class="bi bi-info-circle"></i> Як працює система:</h5>
+            <ul class="mb-0">
+                <li><strong>Учасників:</strong> {{ students|length }}</li>
+                <li><strong>Місць у турнірній сітці:</strong> {{ students|length + byes_count }}</li>
+                {% if students|length == 33 and '5' in class_name %}
+                <li><strong>🎯 Спеціальна система для 5-А:</strong>
+                    <ul>
+                        <li>31 найсильніший → автоматично в 1/16 фіналу</li>
+                        <li>2 найслабші → кваліфікаційний матч</li>
+                        <li>Переможець кваліфікації → йде в 1/16 фіналу</li>
+                    </ul>
+                </li>
+                {% else %}
+                <li><strong>Автопроходів (BYE):</strong> {{ byes_count }} - отримають найсильніші учні</li>
+                {% endif %}
+                <li><strong>Раунди:</strong> 
+                    {% if students|length == 33 and '5' in class_name %}
+                        Кваліфікація → 1/16 → 1/8 → 1/4 → 1/2 → Фінал
+                    {% else %}
+                        1/16 → 1/8 → 1/4 → 1/2 → Фінал
+                    {% endif %}
+                </li>
+            </ul>
+        </div>
+
+        {% if not has_draw %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-star"></i> Крок 1: Встановіть рейтинги учнів</h5>
+            </div>
+            <div class="card-body">
+                <p>Введіть оцінки за І семестр. 
+                {% if students|length == 33 and '5' in class_name %}
+                <strong>31 найсильніший учень</strong> пройде автоматично в 1/16 фіналу, 
+                а <strong>2 найслабші</strong> зіграють кваліфікаційний матч.
+                {% else %}
+                Учні з найвищими оцінками отримають автопрохід (BYE).
+                <strong>{{ byes_count }} найсильніших учнів</strong> пройдуть автоматично в наступний раунд.
+                {% endif %}
+                </p>
+                
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_ratings">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>ПІБ</th>
+                                    <th width="150">Рейтинг (оцінка)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ student.full_name }}</td>
+                                    <td>
+                                        <input type="number" 
+                                               name="rating_{{ student.id }}" 
+                                               class="form-control form-control-sm" 
+                                               value="{{ student.rating }}"
+                                               min="0" 
+                                               max="12"
+                                               step="0.1">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-save"></i> Зберегти рейтинги
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-shuffle"></i> Крок 2: Провести жеребкування</h5>
+            </div>
+            <div class="card-body">
+                <p>Після збереження рейтингів натисніть кнопку для проведення жеребкування.</p>
+                <p>Система автоматично:</p>
+                <ul>
+                    <li>Розподілить учнів випадковим чином</li>
+                    {% if students|length == 33 and '5' in class_name %}
+                    <li>Створить кваліфікаційний матч для 2 найслабших</li>
+                    <li>Надасть автопрохід 31 найсильнішому</li>
+                    {% else %}
+                    <li>Надасть автопрохід {{ byes_count }} найсильнішим</li>
+                    {% endif %}
+                    <li>Створить турнірну сітку</li>
+                </ul>
+                
+                <form method="POST" onsubmit="return confirm('Ви впевнені? Це створить турнірну сітку.');">
+                    <input type="hidden" name="action" value="draw">
+                    <button type="submit" class="btn btn-lg btn-success">
+                        <i class="bi bi-shuffle"></i> Провести жеребкування
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> Жеребкування проведено!
+        </div>
+        
+        <div class="mb-3">
+            <a href="{{ url_for('bracket', class_name=class_name) }}" class="btn btn-success">
+                <i class="bi bi-diagram-2"></i> Переглянути турнірну сітку
+            </a>
+            <a href="{{ url_for('admin_schedule', class_name=class_name) }}" class="btn btn-primary">
+                <i class="bi bi-calendar"></i> Налаштувати розклад
+            </a>
+        </div>
+
+        <form method="POST" onsubmit="return confirm('УВАГА! Це видалить всі поточні результати. Продовжити?');" class="mb-4">
+            <input type="hidden" name="action" value="draw">
+            <button type="submit" class="btn btn-warning">
+                <i class="bi bi-arrow-clockwise"></i> Перепровести жеребкування
+            </button>
+        </form>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Список учасників ({{ students|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if students %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                {% if has_draw %}
+                                <th width="80">Позиція</th>
+                                {% else %}
+                                <th width="80">№</th>
+                                {% endif %}
+                                <th>ПІБ</th>
+                                <th width="100">Рейтинг</th>
+                                {% if has_draw %}
+                                <th width="120">Статус</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr {% if student.has_bye %}class="table-success"{% endif %}>
+                                <td>
+                                    {% if student.seed %}
+                                        <span class="badge bg-primary">{{ student.seed }}</span>
+                                    {% else %}
+                                        {{ loop.index }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ student.full_name }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ student.rating or '—' }}</span>
+                                </td>
+                                {% if has_draw %}
+                                <td>
+                                    {% if student.has_bye %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-arrow-right-circle"></i> 
+                                            {% if students|length == 33 and '5' in class_name %}
+                                                → 1/16
+                                            {% else %}
+                                                BYE
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">
+                                            {% if students|length == 33 and '5' in class_name %}
+                                                Кваліфікація
+                                            {% else %}
+                                                Грає
+                                            {% endif %}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-0">Немає учасників</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

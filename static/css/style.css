@@ -1,0 +1,183 @@
+/* Загальні стилі */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Навігація */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.3rem;
+}
+
+/* Картки */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+/* Таблиці */
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Турнірна сітка */
+.bracket {
+    display: flex;
+    padding: 20px;
+    overflow-x: auto;
+    min-height: 500px;
+}
+
+.round {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    margin: 0 15px;
+}
+
+.round-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    color: #0d6efd;
+    padding: 10px;
+    background: #e7f1ff;
+    border-radius: 5px;
+}
+
+.match-card {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    margin: 10px 0;
+    padding: 12px;
+    min-width: 220px;
+    max-width: 250px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+}
+
+.match-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.match-card.completed {
+    border-color: #198754;
+    background: #f8fff8;
+}
+
+.match-header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 5px;
+    margin-bottom: 8px;
+}
+
+.participant {
+    padding: 10px;
+    margin: 3px 0;
+    border-radius: 5px;
+    background: #f8f9fa;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.participant:hover {
+    background: #e9ecef;
+}
+
+.participant.winner {
+    background: #d1e7dd;
+    font-weight: bold;
+    border: 2px solid #198754;
+}
+
+.participant.bye {
+    background: #fff3cd;
+    font-style: italic;
+    color: #856404;
+}
+
+.match-info {
+    font-size: 0.85em;
+    color: #6c757d;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Бейджі */
+.badge {
+    font-weight: 500;
+}
+
+/* Анімації */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card, .alert {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Адаптивність */
+@media (max-width: 768px) {
+    .bracket {
+        flex-direction: column;
+    }
+    
+    .round {
+        margin: 10px 0;
+    }
+    
+    .match-card {
+        max-width: 100%;
+    }
+}
+
+/* Футер */
+footer {
+    margin-top: auto;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Форми */
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Кнопки */
+.btn {
+    transition: all 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 5px;
+}

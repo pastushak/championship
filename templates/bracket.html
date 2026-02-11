@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Турнірка {{ class_name }} - Швидкочислення{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bracket {
+        overflow-x: auto;
+    }
+    .round {
+        display: inline-block;
+        vertical-align: top;
+        margin: 0 20px;
+    }
+    .round-title {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #0d6efd;
+    }
+    .match-card {
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        margin: 10px 0;
+        padding: 10px;
+        min-width: 200px;
+    }
+    .match-card.completed {
+        border-color: #198754;
+    }
+    .participant {
+        padding: 8px;
+        margin: 2px 0;
+        border-radius: 4px;
+        background: #f8f9fa;
+    }
+    .participant.winner {
+        background: #d1e7dd;
+        font-weight: bold;
+    }
+    .participant.bye {
+        background: #fff3cd;
+        font-style: italic;
+    }
+    .match-info {
+        font-size: 0.85em;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Головна</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('classes') }}">Класи</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('class_detail', class_name=class_name) }}">{{ class_name }}</a></li>
+                <li class="breadcrumb-item active">Турнірна сітка</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-diagram-2"></i> Турнірна сітка: {{ class_name }}</h2>
+            <a href="{{ url_for('class_detail', class_name=class_name) }}" class="btn btn-outline-primary">
+                <i class="bi bi-list"></i> Список учасників
+            </a>
+        </div>
+
+        {% if rounds %}
+        <div class="bracket">
+            {% for round_num, round_matches in rounds %}
+            <div class="round">
+                <div class="round-title">
+                    {% if round_matches %}
+                        {{ round_matches[0].round_name }}
+                    {% else %}
+                        Раунд {{ round_num }}
+                    {% endif %}
+                </div>
+                
+                {% for match in round_matches %}
+                <div class="match-card {% if match.is_completed %}completed{% endif %}">
+                    <div class="match-header mb-2">
+                        <small class="text-muted">Матч #{{ match.match_number }}</small>
+                    </div>
+                    
+                    <div class="participant {% if match.winner_id == match.student1_id %}winner{% endif %} {% if match.student1 and match.student1.has_bye %}text-success fw-bold{% endif %}">
+                        {% if match.student1 %}
+                            {{ match.student1.full_name }}
+                            {% if match.student1.has_bye and match.round_number == 1 %}
+                                <span class="badge bg-success float-end">BYE</span>
+                            {% elif match.score1 is not none %}
+                                <span class="badge bg-secondary float-end">{{ match.score1 }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">Очікується...</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="text-center my-1">
+                        <small class="text-muted">vs</small>
+                    </div>
+                    
+                    <div class="participant {% if match.student2_id is none %}bye{% elif match.winner_id == match.student2_id %}winner{% endif %}">
+                        {% if match.student2 %}
+                            {{ match.student2.full_name }}
+                            {% if match.score2 is not none %}
+                                <span class="badge bg-secondary float-end">{{ match.score2 }}</span>
+                            {% endif %}
+                        {% elif match.student2_id is none and match.student1 %}
+                            <span class="text-warning">BYE (автоматичний прохід)</span>
+                        {% else %}
+                            <span class="text-muted">Очікується...</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if match.scheduled_date %}
+                    <div class="match-info">
+                        <i class="bi bi-calendar3"></i> {{ match.scheduled_date.strftime('%d.%m.%Y %H:%M') }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if match.is_completed %}
+                    <div class="match-info">
+                        <i class="bi bi-check-circle text-success"></i> Завершено
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> 
+            Турнірна сітка ще не сформована. Необхідно провести жеребкування.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
