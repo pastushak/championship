@@ -4,10 +4,12 @@
 <div class="row">
     <div class="col-md-8 mx-auto">
         <div class="text-center mb-5">
-            <h1 class="display-4">
-                <i class="bi bi-trophy-fill text-warning"></i>
-                {% if championship %}{{ championship.name }}{% else %}Чемпіонат зі Швидкочислення{% endif %}
-            </h1>
+            <div class="text-center mb-4">
+                <img src="{{ url_for('static', filename='images/1-logo-color-full.svg') }}" 
+                    alt="Чемпіонат зі Швидкочислення" 
+                    class="img-fluid"
+                    style="max-width: 600px;">
+            </div>
             <p class="lead text-muted">Змагання для учнів 5-7 класів</p>
         </div>
 
