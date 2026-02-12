@@ -256,7 +256,7 @@ def admin_draw(class_name):
                 rating_key = f'rating_{student.id}'
                 if rating_key in request.form:
                     rating = request.form.get(rating_key)
-                    student.rating = int(rating) if rating else 0
+                    student.rating = float(rating) if rating else 0
             db.session.commit()
             flash('Рейтинги оновлено!', 'success')
             return redirect(url_for('admin_draw', class_name=class_name))
@@ -278,7 +278,6 @@ def admin_draw(class_name):
 
 def generate_bracket(class_name):
     """Генерація турнірної сітки після жеребкування з урахуванням рейтингу"""
-    # Сортуємо учнів: спочатку по рейтингу (від більшого), потім по seed
     students = Student.query.filter_by(class_name=class_name).order_by(
         Student.rating.desc(), Student.seed
     ).all()
@@ -292,7 +291,6 @@ def generate_bracket(class_name):
     byes = bracket_size - n
     
     # СПЕЦІАЛЬНА ЛОГІКА ДЛЯ 5-А (33 учні)
-    # 2 найслабші грають кваліфікацію, переможець йде в основну турнірку
     if n == 33 and '5' in class_name:
         # Всі крім 2 останніх отримують автопрохід в основну сітку
         for i, student in enumerate(students):
@@ -304,30 +302,44 @@ def generate_bracket(class_name):
         
         # Створюємо КВАЛІФІКАЦІЙНИЙ матч (round 0)
         qualification_match = Match(
-            student1_id=students[-2].id,  # 32-й учень
-            student2_id=students[-1].id,  # 33-й учень
+            student1_id=students[-2].id,  # 32-й учень (слабший)
+            student2_id=students[-1].id,  # 33-й учень (найслабший)
             class_name=class_name,
             round_number=0,  # Раунд 0 = кваліфікація
             match_number=1
         )
         db.session.add(qualification_match)
+        db.session.flush()  # Зберігаємо кваліфікацію
         
         # Створюємо основну сітку для 32 місць (1/16, 1/8, 1/4, 1/2, фінал)
-        # Перші 31 йдуть автоматично + 1 місце для переможця кваліфікації
-        total_rounds = 5  # 1/16, 1/8, 1/4, 1/2, фінал
+        total_rounds = 5
         
-        # 1/16 фіналу (16 матчів)
-        for match_num in range(1, 17):
+        # 1/16 фіналу (16 матчів для 32 учнів)
+        # Розставляємо перших 30 учнів парами (матчі 1-15)
+        for match_num in range(1, 16):
+            idx1 = (match_num - 1) * 2  # 0, 2, 4, 6... до 28
+            idx2 = idx1 + 1              # 1, 3, 5, 7... до 29
+            
             match = Match(
-                student1_id=None,
-                student2_id=None,
+                student1_id=students[idx1].id,
+                student2_id=students[idx2].id,
                 class_name=class_name,
                 round_number=1,
                 match_number=match_num
             )
             db.session.add(match)
         
-        # Решта раундів
+        # Останній 16-й матч: 31-й учень vs переможець кваліфікації
+        match = Match(
+            student1_id=students[30].id,  # 31-й учень
+            student2_id=None,  # Переможець кваліфікації (заповниться після)
+            class_name=class_name,
+            round_number=1,
+            match_number=16
+        )
+        db.session.add(match)
+        
+        # Решта раундів (1/8, 1/4, 1/2, фінал)
         for round_num in range(2, total_rounds + 1):
             matches_in_round = 2 ** (total_rounds - round_num)
             for match_num in range(1, matches_in_round + 1):
@@ -354,7 +366,6 @@ def generate_bracket(class_name):
     
     # Створюємо перший раунд
     match_num = 1
-    student_idx = 0
     
     # Спочатку додаємо учнів з BYE
     for i in range(byes):

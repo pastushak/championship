@@ -11,7 +11,7 @@ class Student(db.Model):
     patronymic = db.Column(db.String(50))
     class_name = db.Column(db.String(10), nullable=False)
     seed = db.Column(db.Integer)
-    rating = db.Column(db.Integer, default=0)
+    rating = db.Column(db.Float, default=0.0)  # Змінено на Float для 10.5 тощо
     has_bye = db.Column(db.Boolean, default=False)
     
     home_matches = db.relationship('Match', foreign_keys='Match.student1_id', backref='student1', lazy=True)
@@ -28,7 +28,7 @@ class Student(db.Model):
 class Match(db.Model):
     """Модель поєдинку"""
     id = db.Column(db.Integer, primary_key=True)
-    student1_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    student1_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=True)  # ✅ ВИПРАВЛЕНО
     student2_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=True)
     class_name = db.Column(db.String(10), nullable=False)
     round_number = db.Column(db.Integer, nullable=False)
