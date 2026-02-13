@@ -36,6 +36,10 @@
                         <a class="nav-link {% if request.endpoint == 'matches' %}active{% endif %}" 
                            href="{{ url_for('matches') }}">Змагання</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'rules' %}active{% endif %}" 
+                        href="{{ url_for('rules') }}">Правила</a>
+                    </li>
                 </ul>
                 {% if current_user.is_authenticated %}
                 <ul class="navbar-nav">

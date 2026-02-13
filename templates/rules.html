@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Правила чемпіонату - Швидкочислення{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold text-primary">ПРАВИЛА ЧЕМПІОНАТУ</h1>
+                <p class="lead text-muted">Коломийський ліцей "Коломийська гімназія імені Михайла Грушевського", 2025-2026 н.р.</p>
+            </div>
+
+            <!-- Загальні положення -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="bi bi-info-circle"></i> Загальні положення</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>Учасники:</strong> учні 5-7 класів Коломийського ліцею "Коломийська гімназія імені Михайла Грушевського"</p>
+                    <p><strong>Система:</strong> олімпійська (з вибуванням після програшу)</p>
+                    
+                    <h5 class="mt-4">Класи-учасники:</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            5-А клас
+                            <span class="badge bg-primary rounded-pill">33 учні</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            6-А клас
+                            <span class="badge bg-primary rounded-pill">31 учень</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            6-Б клас
+                            <span class="badge bg-primary rounded-pill">27 учнів</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            7-А клас
+                            <span class="badge bg-primary rounded-pill">27 учнів</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            7-Б клас
+                            <span class="badge bg-primary rounded-pill">29 учнів</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Система жеребкування -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0"><i class="bi bi-shuffle"></i> Система жеребкування</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Загальні принципи:</h5>
+                    <ol>
+                        <li>Жеребкування проводиться <strong>окремо для кожного класу</strong></li>
+                        <li>Позиції визначаються <strong>випадковим чином</strong></li>
+                        <li>Рейтинг учня = оцінка з математики за І семестр</li>
+                    </ol>
+
+                    <div class="alert alert-warning mt-4">
+                        <h5><i class="bi bi-star-fill"></i> Спеціальні умови для 5-А класу (33 учні):</h5>
+                        <ul class="mb-0">
+                            <li>🥇 <strong>31 найсильніший</strong> (за рейтингом) → автоматично потрапляють у 1/16 фіналу</li>
+                            <li>⚔️ <strong>2 найслабші</strong> → грають КВАЛІФІКАЦІЙНИЙ матч</li>
+                            <li>🏆 Переможець кваліфікації → потрапляє у 1/16 фіналу</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <h5><i class="bi bi-arrow-right-circle"></i> Інші класи (система BYE):</h5>
+                        <p class="mb-2">Учні з найвищим рейтингом отримують <strong>автопрохід (BYE)</strong> у 1/8 фіналу:</p>
+                        <ul class="mb-0">
+                            <li><strong>6-А:</strong> 1 учень з BYE</li>
+                            <li><strong>6-Б:</strong> 5 учнів з BYE</li>
+                            <li><strong>7-А:</strong> 5 учнів з BYE</li>
+                            <li><strong>7-Б:</strong> 3 учні з BYE</li>
+                        </ul>
+                        <p class="mt-2 mb-0"><em>Решта учнів грають у 1/16 фіналу</em></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Структура турніру -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0"><i class="bi bi-diagram-3"></i> Структура турніру</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Раунди для 5-А класу:</h5>
+                    <div class="alert alert-light">
+                        <code>Кваліфікація (1 матч) → 1/16 (16 матчів) → 1/8 (8 матчів) → 1/4 (4 матчі) → Півфінал (2 матчі) → ФІНАЛ</code>
+                    </div>
+
+                    <h5 class="mt-4">Раунди для 6-А, 6-Б, 7-А, 7-Б:</h5>
+                    <div class="alert alert-light">
+                        <code>1/16 фіналу → 1/8 фіналу → 1/4 фіналу → Півфінал → ФІНАЛ</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Формат змагань -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0"><i class="bi bi-clock"></i> Формат змагань</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Один батл:</h5>
+                    <ul>
+                        <li><strong>Тривалість:</strong> до 5 хвилин</li>
+                        <li><strong>Середовище:</strong> інтерактивна гра "Математичний бій з канатом"</li>
+                        <li><strong>Платформа:</strong> <a href="https://vsimpptx.com/game/" target="_blank" class="text-decoration-none">ВсімPPTX <i class="bi bi-box-arrow-up-right"></i></a> (головний партнер)</li>
+                    </ul>
+
+                    <h5 class="mt-4">Параметри батлу:</h5>
+                    <ul>
+                        <li><strong>Діапазон чисел:</strong> від 1 до 300</li>
+                        <li><strong>Режим дій:</strong> додавання і віднімання</li>
+                        <li><strong>Поведінка прикладів:</strong> не передбачає оновлення прикладів обом учасникам після відповіді</li>
+                    </ul>
+
+                    <div class="alert alert-success mt-4">
+                        <h5><i class="bi bi-trophy"></i> Критерій перемоги:</h5>
+                        <p class="mb-0">Два учасники тягнуть канат своїми відповідями:<br>
+                        ✅ <strong>Правильно</strong> — до себе<br>
+                        ❌ <strong>Неправильно</strong> — до суперника</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правила проведення батлів -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h3 class="mb-0"><i class="bi bi-list-check"></i> Правила проведення батлів</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5 class="text-success">✅ До початку:</h5>
+                            <ul>
+                                <li>очікувати на суддів</li>
+                                <li>внести коректно своє ім'я у форму початку батлу</li>
+                                <li>очікувати запуску організатором</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="text-primary">⏱️ Під час батлу:</h5>
+                            <ul>
+                                <li>не псувати технічний компонент проведення</li>
+                                <li>зберігати тишу, навіть коли супернику випадали суб'єктивно простіші приклади</li>
+                                <li>тільки усний рахунок</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="text-warning">📋 Після батлу:</h5>
+                            <ul>
+                                <li>дати усну згоду на результат батлу</li>
+                                <li>покласти відмітку у протоколі про визнання результату</li>
+                                <li>потиснути руку супернику</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-danger mt-4">
+                        <h5><i class="bi bi-x-circle"></i> ЗАБОРОНЕНО:</h5>
+                        <ul class="mb-0">
+                            <li>❌ калькулятори</li>
+                            <li>❌ телефони</li>
+                            <li>❌ письмові обчислення</li>
+                            <li>❌ сторонні підказки</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Нагородження -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0"><i class="bi bi-trophy-fill"></i> Нагородження</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Переможці кожного класу:</h5>
+                    <div class="row text-center mt-3">
+                        <div class="col-md-4">
+                            <div class="p-3 bg-warning bg-opacity-25 rounded">
+                                <i class="bi bi-trophy-fill text-warning" style="font-size: 3rem;"></i>
+                                <h4 class="mt-2">🥇 1 місце</h4>
+                                <p>Диплом на участь у супертурнірі переможців + Медаль + Приз</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 bg-secondary bg-opacity-25 rounded">
+                                <i class="bi bi-award text-secondary" style="font-size: 3rem;"></i>
+                                <h4 class="mt-2">🥈 2 місце</h4>
+                                <p>Диплом + Медаль</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 bg-danger bg-opacity-25 rounded">
+                                <i class="bi bi-patch-check text-danger" style="font-size: 3rem;"></i>
+                                <h4 class="mt-2">🥉 3-4 місця</h4>
+                                <p>Дипломи учасників</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Важливі зауваження -->
+            <div class="card mb-4 shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> ВАЖЛИВІ ЗАУВАЖЕННЯ</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>⚠️ Дисципліна:</h5>
+                            <p>порушення правил → <strong>дискваліфікація</strong></p>
+                            
+                            <h5 class="mt-3">🚫 Чесність:</h5>
+                            <p>використання сторонніх підказок → <strong>автоматичний програш</strong></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>⏰ Пунктуальність:</h5>
+                            <p>запізнення > 5 хв → <strong>технічна поразка</strong></p>
+                            
+                            <h5 class="mt-3">🤝 Повага:</h5>
+                            <p>до суперників, суддів, глядачів</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <h5><i class="bi bi-lightning-fill"></i> При форс-мажорі:</h5>
+                        <ul class="mb-0">
+                            <li>добровільна відмова від батлу → прохід суперника в наступний раунд</li>
+                            <li>хвороба учасника → перенесення матчу (1 раз)</li>
+                            <li>технічні проблеми → перегравання матчу</li>
+                            <li>спірні ситуації → рішення головного судді (остаточне)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Девіз -->
+            <div class="text-center my-5 p-5 bg-primary bg-opacity-10 rounded">
+                <h2 class="display-6 text-primary fw-bold mb-3">
+                    <i class="bi bi-lightning-charge-fill"></i>
+                    "Швидкість думки - шлях до перемоги!"
+                    <i class="bi bi-lightning-charge-fill"></i>
+                </h2>
+                <p class="lead text-muted">Успіхів усім учасникам! Нехай переможе найсильніший!</p>
+            </div>
+
+            <!-- Кнопки дій -->
+            <div class="text-center mb-5">
+                <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg me-2">
+                    <i class="bi bi-house"></i> На головну
+                </a>
+                <a href="{{ url_for('classes') }}" class="btn btn-success btn-lg">
+                    <i class="bi bi-people"></i> Переглянути класи
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

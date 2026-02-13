@@ -549,6 +549,10 @@ def add_sample_data():
     db.session.commit()
     print("Тестові дані додано!")
 
+@app.route('/rules')
+def rules():
+    """Правила чемпіонату"""
+    return render_template('rules.html')
 
 @app.cli.command()
 def create_real_data():
