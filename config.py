@@ -6,5 +6,5 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Налаштування адміністратора
-    ADMIN_USERNAME = 'admin'
-    ADMIN_PASSWORD = 'admin123'
+    ADMIN_USERNAME = 'fast.count.20202026'
+    ADMIN_PASSWORD = 'fast.count.26'
