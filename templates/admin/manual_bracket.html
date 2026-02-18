@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Ручне формування сітки - {{ class_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>🔧 Ручне формування турнірної сітки: {{ class_name }}</h2>
+    
+    <div class="row mt-4">
+        <!-- Форма додавання матчу -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5>➕ Додати матч</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Раунд:</label>
+                            <select name="round_number" class="form-select" required>
+                                <option value="0">Кваліфікація</option>
+                                <option value="1" selected>1/16 фіналу</option>
+                                <option value="2">1/8 фіналу</option>
+                                <option value="3">1/4 фіналу</option>
+                                <option value="4">1/2 фіналу</option>
+                                <option value="5">Фінал</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Номер матчу:</label>
+                            <input type="number" name="match_number" class="form-control" 
+                                   min="1" value="1" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Учасник 1:</label>
+                            <select name="student1_id" class="form-select">
+                                <option value="">-- Порожньо (TBD) --</option>
+                                {% for student in students %}
+                                <option value="{{ student.id }}">{{ student.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Учасник 2:</label>
+                            <select name="student2_id" class="form-select">
+                                <option value="">-- Порожньо (BYE/TBD) --</option>
+                                {% for student in students %}
+                                <option value="{{ student.id }}">{{ student.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Створити матч
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Список створених матчів -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5>📋 Створені матчі ({{ matches|length }})</h5>
+                </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                    {% if matches %}
+                        {% for match in matches %}
+                        <div class="alert alert-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ match.round_name }}</strong> - Матч #{{ match.match_number }}<br>
+                                <small>
+                                    {{ match.student1.full_name if match.student1 else 'TBD' }}
+                                    vs
+                                    {{ match.student2.full_name if match.student2 else 'BYE' }}
+                                </small>
+                            </div>
+                            <form method="POST" action="{{ url_for('delete_match', match_id=match.id) }}" 
+                                  style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                        onclick="return confirm('Видалити цей матч?')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">Матчів ще не створено</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-3">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад до адмінки
+        </a>
+        <a href="{{ url_for('class_detail', class_name=class_name) }}" 
+           class="btn btn-info" target="_blank">
+            <i class="bi bi-eye"></i> Переглянути сітку
+        </a>
+    </div>
+</div>
+{% endblock %}

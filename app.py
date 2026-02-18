@@ -256,13 +256,15 @@ def admin_draw(class_name):
                 rating_key = f'rating_{student.id}'
                 if rating_key in request.form:
                     rating = request.form.get(rating_key)
-                    student.rating = float(rating) if rating else 0
+                    student.rating = float(rating) if rating else 0.0
             db.session.commit()
             flash('Рейтинги оновлено!', 'success')
             return redirect(url_for('admin_draw', class_name=class_name))
     
     students = Student.query.filter_by(class_name=class_name).order_by(Student.rating.desc(), Student.seed).all()
-    has_draw = any(s.seed is not None for s in students)
+    
+    # Перевіряємо чи є матчі (жеребкування або ручне створення)
+    has_draw = Match.query.filter_by(class_name=class_name).first() is not None
     
     # Розрахунок BYE
     n = len(students)
@@ -599,6 +601,60 @@ def create_real_data():
         print(f"   {class_name}: {count} учнів")
     print("\n💡 Тепер зайдіть в адмінку та проведіть жеребкування для кожного класу!")
 
+@app.route('/admin/manual-bracket/<class_name>', methods=['GET', 'POST'])
+@login_required
+def manual_bracket(class_name):
+    """Ручне створення турнірної сітки"""
+    if request.method == 'POST':
+        # Отримуємо дані з форми
+        round_number = int(request.form.get('round_number'))
+        match_number = int(request.form.get('match_number'))
+        student1_id = request.form.get('student1_id')
+        student2_id = request.form.get('student2_id')
+        
+        # Перетворюємо порожні рядки на None
+        student1_id = int(student1_id) if student1_id else None
+        student2_id = int(student2_id) if student2_id else None
+        
+        # Створюємо матч
+        match = Match(
+            class_name=class_name,
+            round_number=round_number,
+            match_number=match_number,
+            student1_id=student1_id,
+            student2_id=student2_id
+        )
+        db.session.add(match)
+        db.session.commit()
+        
+        flash(f'Матч #{match_number} створено!', 'success')
+        return redirect(url_for('manual_bracket', class_name=class_name))
+    
+    # GET запит - показуємо форму
+    students = Student.query.filter_by(class_name=class_name).order_by(
+        Student.rating.desc()
+    ).all()
+    
+    matches = Match.query.filter_by(class_name=class_name).order_by(
+        Match.round_number, Match.match_number
+    ).all()
+    
+    return render_template('admin/manual_bracket.html', 
+                         class_name=class_name,
+                         students=students,
+                         matches=matches)
+
+
+@app.route('/admin/delete-match/<int:match_id>', methods=['POST'])
+@login_required
+def delete_match(match_id):
+    """Видалення матчу"""
+    match = Match.query.get_or_404(match_id)
+    class_name = match.class_name
+    db.session.delete(match)
+    db.session.commit()
+    flash('Матч видалено!', 'success')
+    return redirect(url_for('manual_bracket', class_name=class_name))
 
 if __name__ == '__main__':
     with app.app_context():
