@@ -292,12 +292,9 @@ def generate_bracket(class_name):
     
     # СПЕЦІАЛЬНА ЛОГІКА ДЛЯ 5-А (33 учні)
     if n == 33 and '5' in class_name:
-        # Всі крім 2 останніх отримують автопрохід в основну сітку
+        # Позначаємо: 31 найсильніший без BYE, 2 найслабші грають кваліфікацію
         for i, student in enumerate(students):
-            if i < 31:  # Перші 31
-                student.has_bye = True
-            else:  # Останні 2
-                student.has_bye = False
+            student.has_bye = False  # Ніхто не має BYE в 5-А
         db.session.commit()
         
         # Створюємо КВАЛІФІКАЦІЙНИЙ матч (round 0)
@@ -309,16 +306,26 @@ def generate_bracket(class_name):
             match_number=1
         )
         db.session.add(qualification_match)
-        db.session.flush()  # Зберігаємо кваліфікацію
+        db.session.flush()
         
         # Створюємо основну сітку для 32 місць (1/16, 1/8, 1/4, 1/2, фінал)
         total_rounds = 5
         
         # 1/16 фіналу (16 матчів для 32 учнів)
-        # Розставляємо перших 30 учнів парами (матчі 1-15)
-        for match_num in range(1, 16):
-            idx1 = (match_num - 1) * 2  # 0, 2, 4, 6... до 28
-            idx2 = idx1 + 1              # 1, 3, 5, 7... до 29
+        # Матч #1: переможець кваліфікації vs 31-й учень (найслабший з автопроходом)
+        match = Match(
+            student1_id=None,  # Переможець кваліфікації (заповниться після)
+            student2_id=students[30].id,  # 31-й учень (students[30])
+            class_name=class_name,
+            round_number=1,
+            match_number=1
+        )
+        db.session.add(match)
+        
+        # Матчі #2-16: розставляємо перших 30 учнів парами
+        for match_num in range(2, 17):
+            idx1 = (match_num - 2) * 2      # 0, 2, 4, 6... до 28
+            idx2 = idx1 + 1                  # 1, 3, 5, 7... до 29
             
             match = Match(
                 student1_id=students[idx1].id,
@@ -329,17 +336,7 @@ def generate_bracket(class_name):
             )
             db.session.add(match)
         
-        # Останній 16-й матч: 31-й учень vs переможець кваліфікації
-        match = Match(
-            student1_id=students[30].id,  # 31-й учень
-            student2_id=None,  # Переможець кваліфікації (заповниться після)
-            class_name=class_name,
-            round_number=1,
-            match_number=16
-        )
-        db.session.add(match)
-        
-        # Решта раундів (1/8, 1/4, 1/2, фінал)
+        # Решта раундів (1/8, 1/4, 1/2, фінал) - пусті, заповняться після 1/16
         for round_num in range(2, total_rounds + 1):
             matches_in_round = 2 ** (total_rounds - round_num)
             for match_num in range(1, matches_in_round + 1):
@@ -355,8 +352,8 @@ def generate_bracket(class_name):
         db.session.commit()
         return
     
-    # СТАНДАРТНА ЛОГІКА ДЛЯ РЕШТИ КЛАСІВ (з BYE)
-    # Позначаємо учнів з автопроходом (найсильніші за рейтингом)
+    # СТАНДАРТНА ЛОГІКА ДЛЯ РЕШТИ КЛАСІВ (з BYE в 1/8, а не в 1/16!)
+    # Позначаємо учнів з автопроходом (найсильніші за рейтингом отримують BYE)
     for i, student in enumerate(students):
         if i < byes:
             student.has_bye = True
@@ -364,26 +361,13 @@ def generate_bracket(class_name):
             student.has_bye = False
     db.session.commit()
     
-    # Створюємо перший раунд
+    # ВАЖЛИВО: BYE тільки в 1/8, а НЕ в 1/16!
+    # В 1/16 всі пари звичайні, без BYE
+    
+    # 1/16 фіналу: всі учні грають звичайні матчі
     match_num = 1
+    remaining_students = students[byes:]  # Учні без BYE грають в 1/16
     
-    # Спочатку додаємо учнів з BYE
-    for i in range(byes):
-        student1 = students[i]
-        match = Match(
-            student1_id=student1.id,
-            student2_id=None,  # BYE
-            class_name=class_name,
-            round_number=1,
-            match_number=match_num,
-            winner_id=student1.id,
-            is_completed=True
-        )
-        db.session.add(match)
-        match_num += 1
-    
-    # Потім додаємо звичайні матчі для решти учнів
-    remaining_students = students[byes:]
     for i in range(0, len(remaining_students), 2):
         if i + 1 < len(remaining_students):
             student1 = remaining_students[i]
@@ -401,19 +385,37 @@ def generate_bracket(class_name):
     
     db.session.commit()
     
-    # Генеруємо наступні раунди (поки пусті)
+    # Генеруємо наступні раунди
     total_rounds = math.ceil(math.log2(bracket_size))
+    
     for round_num in range(2, total_rounds + 1):
         matches_in_round = 2 ** (total_rounds - round_num)
+        match_num_in_round = 1
+        
         for match_num in range(1, matches_in_round + 1):
-            match = Match(
-                student1_id=None,
-                student2_id=None,
-                class_name=class_name,
-                round_number=round_num,
-                match_number=match_num
-            )
+            # В 1/8 (round_num == 2) додаємо учнів з BYE
+            if round_num == 2 and match_num_in_round <= byes:
+                # Учень з BYE автоматично в 1/8
+                student_with_bye = students[match_num_in_round - 1]
+                match = Match(
+                    student1_id=student_with_bye.id,
+                    student2_id=None,  # Переможець з 1/16 (заповниться пізніше)
+                    class_name=class_name,
+                    round_number=round_num,
+                    match_number=match_num
+                )
+            else:
+                # Звичайний порожній матч
+                match = Match(
+                    student1_id=None,
+                    student2_id=None,
+                    class_name=class_name,
+                    round_number=round_num,
+                    match_number=match_num
+                )
+            
             db.session.add(match)
+            match_num_in_round += 1
     
     db.session.commit()
 
