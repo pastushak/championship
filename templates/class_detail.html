@@ -20,13 +20,13 @@
             </a>
         </div>
 
-        {% if has_draw %}
+        {% if has_bracket %}
         <div class="alert alert-success">
-            <i class="bi bi-check-circle"></i> Жеребкування проведено
+            <i class="bi bi-check-circle"></i> Турнірна сітка сформована
         </div>
         {% else %}
         <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle"></i> Жеребкування ще не проведено
+            <i class="bi bi-exclamation-triangle"></i> Турнірна сітка ще не сформована
         </div>
         {% endif %}
 
@@ -42,29 +42,31 @@
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                {% if has_draw %}
-                                <th width="80">Номер</th>
-                                {% else %}
-                                <th width="80">№</th>
-                                {% endif %}
+                                <th width="60">№</th>
                                 <th>Прізвище</th>
                                 <th>Ім'я</th>
-                                <th>По батькові</th>
+                                <th width="120">Рейтинг</th>
+                                <th width="150">Статус</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for student in students %}
                             <tr>
-                                <td>
-                                    {% if student.seed %}
-                                        <span class="badge bg-primary">{{ student.seed }}</span>
-                                    {% else %}
-                                        {{ loop.index }}
-                                    {% endif %}
-                                </td>
+                                <td>{{ loop.index }}</td>
                                 <td>{{ student.last_name }}</td>
                                 <td>{{ student.first_name }}</td>
-                                <td>{{ student.patronymic or '-' }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ student.rating or '—' }}</span>
+                                </td>
+                                <td>
+                                    {% if student.bracket_status == 'main' %}
+                                        <span class="badge bg-success">Основна сітка</span>
+                                    {% elif student.bracket_status == 'qualification' %}
+                                        <span class="badge bg-warning text-dark">Кваліфікація</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Не визначено</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>

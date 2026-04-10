@@ -9,59 +9,57 @@
             <i class="bi bi-gear-fill"></i> Панель адміністратора
         </h2>
 
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> 
-            Для кожного класу потрібно: додати учнів → провести жеребкування → призначити дати матчів → заповнити результати
-        </div>
-
         <h4 class="mt-4 mb-3">Класи</h4>
 
         {% if classes %}
         <div class="row">
             {% for class_data in classes %}
             <div class="col-md-6 mb-4">
-                <div class="card {% if class_data.has_draw %}border-success{% endif %}">
-                    <div class="card-header {% if class_data.has_draw %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
+                <div class="card {% if class_data.has_bracket %}border-success{% endif %}">
+                    <div class="card-header {% if class_data.has_bracket %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
                         <h5 class="mb-0">Клас {{ class_data.name }}</h5>
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
                             <div class="col-6">
-                                <i class="bi bi-people"></i> Учасників: 
+                                <i class="bi bi-people"></i> Учасників:
                                 <strong>{{ class_data.students_count }}</strong>
                             </div>
                             <div class="col-6">
-                                <i class="bi bi-trophy"></i> Матчів: 
+                                <i class="bi bi-trophy"></i> Матчів:
                                 <strong>{{ class_data.matches_count }}</strong>
+                                {% if class_data.completed_matches > 0 %}
+                                <small class="text-success">({{ class_data.completed_matches }} завершено)</small>
+                                {% endif %}
                             </div>
                         </div>
 
-                        {% if class_data.has_draw %}
-                        <div class="alert alert-success mb-3">
-                            <i class="bi bi-check-circle"></i> Жеребкування проведено
+                        {% if class_data.has_bracket %}
+                        <div class="alert alert-success mb-3 py-2">
+                            <i class="bi bi-check-circle"></i> Сітка сформована
                         </div>
                         {% else %}
-                        <div class="alert alert-warning mb-3">
-                            <i class="bi bi-exclamation-triangle"></i> Потрібне жеребкування
+                        <div class="alert alert-warning mb-3 py-2">
+                            <i class="bi bi-exclamation-triangle"></i> Сітка не сформована
                         </div>
                         {% endif %}
 
                         <div class="d-grid gap-2">
-                            <a href="{{ url_for('admin_draw', class_name=class_data.name) }}" 
+                            <a href="{{ url_for('admin_students', class_name=class_data.name) }}"
+                               class="btn btn-outline-warning">
+                                <i class="bi bi-people"></i> Статуси учнів
+                            </a>
+                            <a href="{{ url_for('bracket_builder', class_name=class_data.name) }}"
                                class="btn btn-primary">
-                                <i class="bi bi-shuffle"></i> Жеребкування
+                                <i class="bi bi-diagram-2"></i> Побудова сітки
                             </a>
-                            <a href="{{ url_for('manual_bracket', class_name=class_data.name) }}" 
-                               class="btn btn-warning">
-                                <i class="bi bi-pencil-square"></i> Ручна сітка
+                            <a href="{{ url_for('randomize_bracket', class_name=class_data.name) }}"
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-shuffle"></i> Рандомайзер
                             </a>
-                            <a href="{{ url_for('admin_schedule', class_name=class_data.name) }}" 
-                               class="btn btn-outline-primary">
-                                <i class="bi bi-calendar"></i> Розклад матчів
-                            </a>
-                            <a href="{{ url_for('bracket', class_name=class_data.name) }}" 
+                            <a href="{{ url_for('bracket', class_name=class_data.name) }}"
                                class="btn btn-outline-success">
-                                <i class="bi bi-diagram-2"></i> Турнірна сітка
+                                <i class="bi bi-eye"></i> Переглянути сітку
                             </a>
                         </div>
                     </div>
@@ -69,6 +67,13 @@
             </div>
             {% endfor %}
         </div>
+
+        <div class="mt-3">
+            <a href="{{ url_for('admin_superfinal') }}" class="btn btn-warning">
+                <i class="bi bi-trophy-fill"></i> Суперфінал
+            </a>
+        </div>
+
         {% else %}
         <div class="alert alert-warning">
             <i class="bi bi-exclamation-triangle"></i> Немає класів.

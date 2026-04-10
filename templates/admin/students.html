@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Учні {{ class_name }} - Адмінка{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Адмінка</a></li>
+                <li class="breadcrumb-item active">Учні {{ class_name }}</li>
+            </ol>
+        </nav>
+
+        <h2 class="mb-4"><i class="bi bi-people"></i> Учні класу {{ class_name }}</h2>
+
+        <!-- Статистика статусів -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center border-success">
+                    <div class="card-body py-2">
+                        <h4 class="text-success mb-0">{{ students | selectattr('bracket_status', 'equalto', 'main') | list | length }}</h4>
+                        <small class="text-muted">Основна сітка</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-warning">
+                    <div class="card-body py-2">
+                        <h4 class="text-warning mb-0">{{ students | selectattr('bracket_status', 'equalto', 'qualification') | list | length }}</h4>
+                        <small class="text-muted">Кваліфікація</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-secondary">
+                    <div class="card-body py-2">
+                        <h4 class="text-secondary mb-0">{{ students | selectattr('bracket_status', 'equalto', 'none') | list | length }}</h4>
+                        <small class="text-muted">Не визначено</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Швидке призначення всіх -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="bi bi-lightning"></i> Швидке призначення</h6>
+            </div>
+            <div class="card-body d-flex gap-2">
+                <button onclick="setAll('main')" class="btn btn-success btn-sm">
+                    ✅ Всі → Основна сітка
+                </button>
+                <button onclick="setAll('qualification')" class="btn btn-warning btn-sm">
+                    ⚡ Всі → Кваліфікація
+                </button>
+                <button onclick="setAll('none')" class="btn btn-secondary btn-sm">
+                    ❌ Всі → Не визначено
+                </button>
+            </div>
+        </div>
+
+        <!-- Таблиця учнів зі статусами -->
+        <form method="POST">
+            <input type="hidden" name="action" value="update_status">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list"></i> Список учнів ({{ students|length }})</h5>
+                    <button type="submit" class="btn btn-light btn-sm">
+                        <i class="bi bi-save"></i> Зберегти статуси
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="50">№</th>
+                                    <th id="name-header" onclick="sortByName()" style="cursor:pointer; user-select:none;">Прізвище та ім'я <span id="name-sort-icon">↕</span></th>
+                                    <th width="100" class="text-center" id="rating-header" onclick="sortByRating()" style="cursor:pointer; user-select:none;">Рейтинг <span id="sort-icon">↕</span></th>
+                                    <th width="280">Статус участі</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr id="row-{{ student.id }}" class="
+                                    {% if student.bracket_status == 'main' %}table-success
+                                    {% elif student.bracket_status == 'qualification' %}table-warning
+                                    {% endif %}">
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ student.last_name }}</strong> {{ student.first_name }}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info">{{ student.rating }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm w-100" role="group">
+                                            <input type="radio" class="btn-check" 
+                                                   name="status_{{ student.id }}" 
+                                                   id="main_{{ student.id }}" 
+                                                   value="main"
+                                                   {% if student.bracket_status == 'main' %}checked{% endif %}
+                                                   onchange="highlightRow('{{ student.id }}', 'main')">
+                                            <label class="btn btn-outline-success" for="main_{{ student.id }}">
+                                                ✅ Основна
+                                            </label>
+
+                                            <input type="radio" class="btn-check" 
+                                                   name="status_{{ student.id }}" 
+                                                   id="qual_{{ student.id }}" 
+                                                   value="qualification"
+                                                   {% if student.bracket_status == 'qualification' %}checked{% endif %}
+                                                   onchange="highlightRow('{{ student.id }}', 'qualification')">
+                                            <label class="btn btn-outline-warning" for="qual_{{ student.id }}">
+                                                ⚡ Кваліф.
+                                            </label>
+
+                                            <input type="radio" class="btn-check" 
+                                                   name="status_{{ student.id }}" 
+                                                   id="none_{{ student.id }}" 
+                                                   value="none"
+                                                   {% if student.bracket_status == 'none' %}checked{% endif %}
+                                                   onchange="highlightRow('{{ student.id }}', 'none')">
+                                            <label class="btn btn-outline-secondary" for="none_{{ student.id }}">
+                                                — Немає
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Зберегти всі статуси
+                    </button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary ms-2">
+                        Назад
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function highlightRow(studentId, status) {
+    const row = document.getElementById('row-' + studentId);
+    row.classList.remove('table-success', 'table-warning');
+    if (status === 'main') row.classList.add('table-success');
+    else if (status === 'qualification') row.classList.add('table-warning');
+}
+
+function setAll(status) {
+    const radios = document.querySelectorAll(`input[value="${status}"]`);
+    radios.forEach(radio => {
+        radio.checked = true;
+        const studentId = radio.name.replace('status_', '');
+        highlightRow(studentId, status);
+    });
+}
+
+let ratingSortAsc = false;
+let nameSortAsc = true;
+
+function resetSortIcons() {
+    document.getElementById('sort-icon').textContent = '↕';
+    document.getElementById('name-sort-icon').textContent = '↕';
+}
+
+function sortByRating() {
+    const tbody = document.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        const ratingA = parseFloat(a.querySelector('.badge.bg-info').textContent) || 0;
+        const ratingB = parseFloat(b.querySelector('.badge.bg-info').textContent) || 0;
+        return ratingSortAsc ? ratingA - ratingB : ratingB - ratingA;
+    });
+
+    resetSortIcons();
+    document.getElementById('sort-icon').textContent = ratingSortAsc ? '↑' : '↓';
+    ratingSortAsc = !ratingSortAsc;
+
+    rows.forEach((row, index) => {
+        row.querySelector('td:first-child').textContent = index + 1;
+        tbody.appendChild(row);
+    });
+}
+
+const UA_ALPHA = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя';
+const UA_UPPER = 'АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ';
+
+function uaNormalize(str) {
+    let result = '';
+    for (let ch of str) {
+        const idx = UA_UPPER.indexOf(ch);
+        result += idx !== -1 ? UA_ALPHA[idx] : ch;
+    }
+    return result;
+}
+
+function uaCharOrder(ch) {
+    const idx = UA_ALPHA.indexOf(ch);
+    return idx === -1 ? 999 : idx;
+}
+
+function uaCompare(a, b) {
+    const strA = uaNormalize(a.trim());
+    const strB = uaNormalize(b.trim());
+    for (let i = 0; i < Math.min(strA.length, strB.length); i++) {
+        const diff = uaCharOrder(strA[i]) - uaCharOrder(strB[i]);
+        if (diff !== 0) return diff;
+    }
+    return strA.length - strB.length;
+}
+
+function sortByName() {
+    const tbody = document.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        const nameA = a.querySelector('td:nth-child(2)').textContent.trim();
+        const nameB = b.querySelector('td:nth-child(2)').textContent.trim();
+        const result = uaCompare(nameA, nameB);
+        return nameSortAsc ? result : -result;
+    });
+
+    resetSortIcons();
+    document.getElementById('name-sort-icon').textContent = nameSortAsc ? '↓' : '↑';
+    nameSortAsc = !nameSortAsc;
+
+    rows.forEach((row, index) => {
+        row.querySelector('td:first-child').textContent = index + 1;
+        tbody.appendChild(row);
+    });
+}
+</script>
+{% endblock %}

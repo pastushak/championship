@@ -1,77 +1,149 @@
-from flask_sqlalchemy import SQLAlchemy
+import mongoengine as me
 from datetime import datetime
 
-db = SQLAlchemy()
 
-class Student(db.Model):
-    """Модель учня"""
-    id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(50), nullable=False)
-    last_name = db.Column(db.String(50), nullable=False)
-    patronymic = db.Column(db.String(50))
-    class_name = db.Column(db.String(10), nullable=False)
-    seed = db.Column(db.Integer)
-    rating = db.Column(db.Float, default=0.0)  # Змінено на Float для 10.5 тощо
-    has_bye = db.Column(db.Boolean, default=False)
-    
-    home_matches = db.relationship('Match', foreign_keys='Match.student1_id', backref='student1', lazy=True)
-    away_matches = db.relationship('Match', foreign_keys='Match.student2_id', backref='student2', lazy=True)
-    
+def init_db(app):
+    me.connect(host=app.config['MONGODB_URI'])
+
+
+class Student(me.Document):
+    first_name = me.StringField(max_length=50, required=True)
+    last_name = me.StringField(max_length=50, required=True)
+    patronymic = me.StringField(max_length=50)
+    class_name = me.StringField(max_length=10, required=True)
+    rating = me.FloatField(default=0.0)
+    bracket_status = me.StringField(choices=('main', 'qualification', 'none'), default='none')
+    qualified = me.BooleanField(default=False)
+
+    meta = {'collection': 'students', 'ordering': ['class_name', 'last_name']}
+
     @property
     def full_name(self):
-        return f"{self.last_name} {self.first_name} {self.patronymic or ''}".strip()
-    
-    def __repr__(self):
-        return f'<Student {self.full_name} ({self.class_name})>'
+        parts = [self.last_name, self.first_name]
+        if self.patronymic and self.patronymic != '-':
+            parts.append(self.patronymic)
+        return ' '.join(parts)
+
+    def __str__(self):
+        return f'{self.full_name} ({self.class_name})'
 
 
-class Match(db.Model):
-    """Модель поєдинку"""
-    id = db.Column(db.Integer, primary_key=True)
-    student1_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=True)  # ✅ ВИПРАВЛЕНО
-    student2_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=True)
-    class_name = db.Column(db.String(10), nullable=False)
-    round_number = db.Column(db.Integer, nullable=False)
-    match_number = db.Column(db.Integer, nullable=False)
-    
-    winner_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=True)
-    winner = db.relationship('Student', foreign_keys=[winner_id], backref='wins')
-    
-    scheduled_date = db.Column(db.DateTime, nullable=True)
-    completed_date = db.Column(db.DateTime, nullable=True)
-    is_completed = db.Column(db.Boolean, default=False)
-    
-    score1 = db.Column(db.Integer)
-    score2 = db.Column(db.Integer)
-    notes = db.Column(db.Text)
-    
-    def __repr__(self):
-        return f'<Match {self.class_name} Round {self.round_number} Match {self.match_number}>'
-    
+class Match(me.Document):
+    class_name = me.StringField(max_length=10, required=True)
+    bracket_type = me.StringField(choices=('qualification', 'main', 'superfinal'), default='main')
+    round_name = me.StringField(max_length=20, required=True)
+    round_number = me.IntField(required=True)
+    match_number = me.IntField(required=True)
+
+    student1_id = me.StringField()
+    student2_id = me.StringField()  # 'BYE' або ObjectId як string
+    winner_id = me.StringField()
+
+    is_completed = me.BooleanField(default=False)
+    completed_date = me.DateTimeField()
+    scheduled_date = me.DateTimeField()
+    notes = me.StringField()
+
+    meta = {'collection': 'matches', 'ordering': ['class_name', 'round_number', 'match_number']}
+
     @property
-    def round_name(self):
-        """Назва раунду українською"""
-        if self.round_number == 0:
-            return "Кваліфікація"
-        round_names = {
-            1: "1/16 фіналу",
-            2: "1/8 фіналу",
-            3: "1/4 фіналу",
-            4: "1/2 фіналу (Півфінал)",
-            5: "Фінал",
-            6: "За 3-є місце"
+    def student1(self):
+        if self.student1_id:
+            try:
+                return Student.objects.get(id=self.student1_id)
+            except:
+                return None
+        return None
+
+    @property
+    def student2(self):
+        if self.student2_id == 'BYE':
+            return None
+        if self.student2_id:
+            try:
+                return Student.objects.get(id=self.student2_id)
+            except:
+                return None
+        return None
+
+    @property
+    def is_bye(self):
+        return self.student2_id == 'BYE'
+
+    @property
+    def winner(self):
+        if self.winner_id:
+            try:
+                return Student.objects.get(id=self.winner_id)
+            except:
+                return None
+        return None
+
+    @property
+    def round_display(self):
+        names = {
+            'qualification': 'Кваліфікація',
+            '1/32': '1/32 фіналу',
+            '1/16': '1/16 фіналу',
+            '1/8': '1/8 фіналу',
+            '1/4': '1/4 фіналу',
+            '1/2': '1/2 фіналу (Півфінал)',
+            'final': 'Фінал',
         }
-        return round_names.get(self.round_number, f"Раунд {self.round_number}")
+        return names.get(self.round_name, self.round_name)
+
+    def __str__(self):
+        return f'{self.class_name} {self.round_name} #{self.match_number}'
 
 
-class Championship(db.Model):
-    """Загальні налаштування чемпіонату"""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), default="Чемпіонат зі Швидкочислення")
-    start_date = db.Column(db.DateTime)
-    end_date = db.Column(db.DateTime)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<Championship {self.name}>'
+class SuperfinalMatch(me.Document):
+    student1_id = me.StringField()
+    student2_id = me.StringField()
+    match_number = me.IntField(required=True)
+    winner_id = me.StringField()
+    is_completed = me.BooleanField(default=False)
+    completed_date = me.DateTimeField()
+    scheduled_date = me.DateTimeField()
+    notes = me.StringField()
+
+    @property
+    def student1(self):
+        if self.student1_id:
+            try:
+                return Student.objects.get(id=self.student1_id)
+            except:
+                return None
+        return None
+
+    @property
+    def student2(self):
+        if self.student2_id:
+            try:
+                return Student.objects.get(id=self.student2_id)
+            except:
+                return None
+        return None
+
+    @property
+    def winner(self):
+        if self.winner_id:
+            try:
+                return Student.objects.get(id=self.winner_id)
+            except:
+                return None
+        return None
+
+    meta = {'collection': 'superfinal_matches', 'ordering': ['match_number']}
+
+
+class Championship(me.Document):
+    name = me.StringField(max_length=200, default="Чемпіонат зі Швидкочислення")
+    start_date = me.DateTimeField()
+    end_date = me.DateTimeField()
+    is_active = me.BooleanField(default=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
+
+    meta = {'collection': 'championship'}
+
+    def __str__(self):
+        return self.name

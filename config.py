@@ -2,9 +2,6 @@ import os
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///championship.db'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
-    # Налаштування адміністратора
-    ADMIN_USERNAME = 'fast.count.20202026'
-    ADMIN_PASSWORD = 'fast.count.26'
+    MONGODB_URI = os.environ.get('MONGODB_URI') or 'mongodb://localhost/championship'
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME') or 'fast.count.20202026'
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'fast.count.26'

@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+
+{% block title %}Побудова сітки {{ class_name }} - Адмінка{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-card {
+        background: white;
+        border: 2px solid #0057b8;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 4px;
+        cursor: grab;
+        display: inline-block;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    .student-card:hover {
+        background: #e7f1ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,87,184,0.2);
+    }
+    .student-card.dragging {
+        opacity: 0.4;
+        cursor: grabbing;
+    }
+    .student-card.bye-card {
+        border-color: #ffd700;
+        background: #fffbe6;
+        color: #856404;
+        font-weight: bold;
+    }
+    .student-card.bye-card:hover {
+        background: #fff3cd;
+    }
+
+    .drop-slot {
+        min-width: 200px;
+        min-height: 42px;
+        border: 2px dashed #ccc;
+        border-radius: 6px;
+        padding: 4px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #aaa;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        position: relative;
+    }
+    .drop-slot.drag-over {
+        border-color: #0057b8;
+        background: #e7f1ff;
+        color: #0057b8;
+    }
+    .drop-slot.filled {
+        border-color: #198754;
+        border-style: solid;
+        background: #f8fff8;
+        color: #198754;
+        font-weight: 500;
+        justify-content: space-between;
+    }
+    .drop-slot.filled.bye {
+        border-color: #ffd700;
+        background: #fffbe6;
+        color: #856404;
+    }
+    .drop-slot.filled.winner {
+        border-color: #198754;
+        background: #d1e7dd;
+    }
+
+    .match-pair {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .match-pair.completed {
+        border-color: #198754;
+        background: #f8fff8;
+    }
+    .match-number {
+        font-size: 0.75rem;
+        color: #6c757d;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .vs-divider {
+        text-align: center;
+        color: #aaa;
+        font-size: 0.8rem;
+        font-weight: bold;
+        margin: 4px 0;
+    }
+
+    #students-container {
+        background: #f8f9fa;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 16px;
+        min-height: 80px;
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
+    .remove-btn {
+        background: none;
+        border: none;
+        color: #dc3545;
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0 4px;
+        line-height: 1;
+    }
+    .remove-btn:hover { color: #a71d2a; }
+
+    .round-tag {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    .bracket-section {
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        background: #fafafa;
+    }
+    .bracket-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Адмінка</a></li>
+                <li class="breadcrumb-item active">Побудова сітки {{ class_name }}</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-diagram-2"></i> Побудова сітки: {{ class_name }}</h2>
+            <a href="{{ url_for('bracket', class_name=class_name) }}" class="btn btn-outline-success">
+                <i class="bi bi-eye"></i> Переглянути сітку
+            </a>
+        </div>
+
+        <!-- Генерація нового раунду -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Додати раунд</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Тип сітки</label>
+                        <select id="bracket-type" class="form-select">
+                            <option value="main">Основна сітка</option>
+                            <option value="qualification">Кваліфікація</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Раунд</label>
+                        <select id="round-select" class="form-select" onchange="updateQualFields()">
+                            <option value="qualification">Кваліфікація</option>
+                            <option value="1/32">1/32 фіналу (32 пари)</option>
+                            <option value="1/16" selected>1/16 фіналу (16 пар)</option>
+                            <option value="1/8">1/8 фіналу (8 пар)</option>
+                            <option value="1/4">1/4 фіналу (4 пари)</option>
+                            <option value="1/2">1/2 фіналу (2 пари)</option>
+                            <option value="final">Фінал (1 пара)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2" id="qual-slots-wrap" style="display:none">
+                        <label class="form-label fw-semibold">Пар у кваліфікації</label>
+                        <input type="number" id="qual-slots" class="form-control" value="2" min="1" max="32">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" onclick="generateSlots()">
+                            <i class="bi bi-grid"></i> Згенерувати слоти
+                        </button>
+                    </div>
+                </div>
+                <div id="generate-msg" class="mt-2"></div>
+            </div>
+        </div>
+
+        <!-- Існуючі раунди -->
+        <div id="brackets-container">
+            {% set rounds_seen = namespace(value=[]) %}
+            {% for match in existing_matches %}
+                {% set round_key = match.bracket_type + '_' + match.round_name %}
+                {% if round_key not in rounds_seen.value %}
+                    {% set _ = rounds_seen.value.append(round_key) %}
+
+                    {% set round_matches = existing_matches | selectattr('round_name', 'equalto', match.round_name) | selectattr('bracket_type', 'equalto', match.bracket_type) | list %}
+
+                    <div class="bracket-section" id="section-{{ match.bracket_type }}-{{ match.round_name | replace('/', '-') }}">
+                        <div class="bracket-section-header">
+                            <div>
+                                <span class="round-tag {% if match.bracket_type == 'qualification' %}bg-warning text-dark{% else %}bg-primary text-white{% endif %}">
+                                    {% if match.bracket_type == 'qualification' %}⚡ Кваліфікація{% else %}🏆 Основна сітка{% endif %}
+                                </span>
+                                <h5 class="d-inline ms-2 mb-0">{{ match.round_display }}</h5>
+                                <small class="text-muted ms-2">{{ round_matches|length }} пар</small>
+                            </div>
+                            <button class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteRound('{{ class_name }}', '{{ match.round_name }}', '{{ match.bracket_type }}')">
+                                <i class="bi bi-trash"></i> Видалити раунд
+                            </button>
+                        </div>
+
+                        <div class="row">
+                            {% for m in round_matches %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="match-pair {% if m.is_completed %}completed{% endif %}" id="match-{{ m.id }}">
+                                    <div class="match-number">Пара #{{ m.match_number }}</div>
+
+                                    <!-- Слот 1 -->
+                                    <div class="drop-slot {% if m.student1_id %}filled{% endif %} {% if m.winner_id == m.student1_id and m.is_completed %}winner{% endif %}"
+                                         id="slot-{{ m.id }}-student1"
+                                         data-match-id="{{ m.id }}"
+                                         data-slot="student1"
+                                         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                                         ondragleave="this.classList.remove('drag-over')"
+                                         ondrop="handleDrop(event, this)">
+                                        {% if m.student1_id %}
+                                            <span>{{ m.student1.full_name if m.student1 else '?' }}</span>
+                                            <button class="remove-btn" onclick="removeFromSlot('{{ m.id }}', 'student1')">✕</button>
+                                        {% else %}
+                                            Гравець 1
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="vs-divider">vs</div>
+
+                                    <!-- Слот 2 -->
+                                    <div class="drop-slot {% if m.student2_id %}filled{% endif %} {% if m.student2_id == 'BYE' %}bye{% endif %} {% if m.winner_id == m.student2_id and m.is_completed %}winner{% endif %}"
+                                         id="slot-{{ m.id }}-student2"
+                                         data-match-id="{{ m.id }}"
+                                         data-slot="student2"
+                                         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                                         ondragleave="this.classList.remove('drag-over')"
+                                         ondrop="handleDrop(event, this)">
+                                        {% if m.student2_id == 'BYE' %}
+                                            <span>⚡ BYE</span>
+                                            <button class="remove-btn" onclick="removeFromSlot('{{ m.id }}', 'student2')">✕</button>
+                                        {% elif m.student2_id %}
+                                            <span>{{ m.student2.full_name if m.student2 else '?' }}</span>
+                                            <button class="remove-btn" onclick="removeFromSlot('{{ m.id }}', 'student2')">✕</button>
+                                        {% else %}
+                                            Гравець 2
+                                        {% endif %}
+                                    </div>
+
+                                    {% if m.is_completed %}
+                                    <div class="mt-2 text-center">
+                                        <small class="text-success fw-bold">
+                                            🏆 {{ m.winner.full_name if m.winner else '' }}
+                                        </small>
+                                    </div>
+                                    {% elif m.student1_id and m.student2_id and m.student2_id != 'BYE' %}
+                                    <div class="mt-2">
+                                        <select class="form-select form-select-sm" onchange="setWinner('{{ m.id }}', this.value)">
+                                            <option value="">— Вибрати переможця —</option>
+                                            <option value="{{ m.student1_id }}">{{ m.student1.full_name if m.student1 else '' }}</option>
+                                            <option value="{{ m.student2_id }}">{{ m.student2.full_name if m.student2 else '' }}</option>
+                                        </select>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Контейнер з картками учнів (sticky знизу) -->
+        <div id="students-container">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong><i class="bi bi-people"></i> Учні для перетягування</strong>
+                <div class="d-flex gap-2 align-items-center">
+                    <select id="student-filter" class="form-select form-select-sm" style="width:180px" onchange="filterStudents()">
+                        <option value="all">Всі учні</option>
+                        <option value="main">Основна сітка</option>
+                        <option value="qualification">Кваліфікація</option>
+                        <option value="none">Не визначено</option>
+                    </select>
+                    <small class="text-muted" id="cards-count"></small>
+                </div>
+            </div>
+            <div id="cards-area">
+                <!-- BYE картка (завжди є) -->
+                <div class="student-card bye-card"
+                     draggable="true"
+                     data-student-id="BYE"
+                     data-name="BYE"
+                     data-status="all"
+                     ondragstart="handleDragStart(event, this)">
+                    ⚡ BYE
+                </div>
+
+                {% for student in students_main %}
+                {% if student.id | string not in used_student_ids %}
+                <div class="student-card"
+                     draggable="true"
+                     id="card-{{ student.id }}"
+                     data-student-id="{{ student.id }}"
+                     data-name="{{ student.last_name }} {{ student.first_name }}"
+                     data-status="main"
+                     ondragstart="handleDragStart(event, this)">
+                    {{ student.last_name }} {{ student.first_name }}
+                    <small class="text-muted">({{ student.rating }})</small>
+                </div>
+                {% endif %}
+                {% endfor %}
+
+                {% for student in students_qual %}
+                {% if student.id | string not in used_student_ids %}
+                <div class="student-card"
+                     draggable="true"
+                     id="card-{{ student.id }}"
+                     data-student-id="{{ student.id }}"
+                     data-name="{{ student.last_name }} {{ student.first_name }}"
+                     data-status="qualification"
+                     ondragstart="handleDragStart(event, this)">
+                    {{ student.last_name }} {{ student.first_name }}
+                    <small class="text-muted">({{ student.rating }})</small>
+                </div>
+                {% endif %}
+                {% endfor %}
+
+                {% for student in students_none %}
+                {% if student.id | string not in used_student_ids %}
+                <div class="student-card"
+                     draggable="true"
+                     id="card-{{ student.id }}"
+                     data-student-id="{{ student.id }}"
+                     data-name="{{ student.last_name }} {{ student.first_name }}"
+                     data-status="none"
+                     ondragstart="handleDragStart(event, this)">
+                    {{ student.last_name }} {{ student.first_name }}
+                    <small class="text-muted">({{ student.rating }})</small>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const CLASS_NAME = "{{ class_name }}";
+let draggedStudentId = null;
+let draggedCardEl = null;
+
+// ── Drag Start ──
+function handleDragStart(event, el) {
+    draggedStudentId = el.dataset.studentId;
+    draggedCardEl = el;
+    el.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+}
+
+document.addEventListener('dragend', () => {
+    if (draggedCardEl) draggedCardEl.classList.remove('dragging');
+});
+
+// ── Drop ──
+async function handleDrop(event, slotEl) {
+    event.preventDefault();
+    slotEl.classList.remove('drag-over');
+    if (!draggedStudentId) return;
+
+    const matchId = slotEl.dataset.matchId;
+    const slot = slotEl.dataset.slot;
+
+    const res = await fetch('/admin/bracket-builder/assign', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            match_id: matchId,
+            slot: slot,
+            student_id: draggedStudentId
+        })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+        // Прибираємо картку з контейнера (якщо не BYE)
+        if (draggedStudentId !== 'BYE' && draggedCardEl) {
+            draggedCardEl.remove();
+        }
+        // Оновлюємо слот
+        updateSlotUI(slotEl, draggedStudentId, draggedCardEl ? draggedCardEl.dataset.name : 'BYE');
+
+        // Якщо BYE — одразу показуємо переможця
+        if (data.is_completed) {
+            const matchEl = document.getElementById('match-' + matchId);
+            if (matchEl) {
+                matchEl.classList.add('completed');
+                // Підсвічуємо переможця
+                const slots = matchEl.querySelectorAll('.drop-slot');
+                slots.forEach(s => {
+                    if ((slot === 'student1' && s.dataset.slot === 'student1') ||
+                        (slot === 'student2' && s.dataset.slot === 'student2')) {
+                        s.classList.add('winner');
+                    }
+                });
+                // Прибираємо select переможця якщо є
+                const sel = matchEl.querySelector('select');
+                if (sel) sel.parentElement.remove();
+
+                // Показуємо переможця
+                const winnerName = draggedCardEl ? draggedCardEl.dataset.name : '';
+                const winDiv = document.createElement('div');
+                winDiv.className = 'mt-2 text-center';
+                winDiv.innerHTML = `<small class="text-success fw-bold">🏆 ${winnerName}</small>`;
+                matchEl.appendChild(winDiv);
+            }
+        }
+
+        updateCardsCount();
+        draggedStudentId = null;
+        draggedCardEl = null;
+    } else {
+        alert('Помилка: ' + (data.error || 'невідома'));
+    }
+}
+
+function updateSlotUI(slotEl, studentId, name) {
+    slotEl.classList.add('filled');
+    slotEl.classList.remove('drag-over');
+    if (studentId === 'BYE') slotEl.classList.add('bye');
+
+    const displayName = studentId === 'BYE' ? '⚡ BYE' : name;
+    slotEl.innerHTML = `
+        <span>${displayName}</span>
+        <button class="remove-btn" onclick="removeFromSlot('${slotEl.dataset.matchId}', '${slotEl.dataset.slot}')">✕</button>
+    `;
+}
+
+// ── Remove from slot ──
+async function removeFromSlot(matchId, slot) {
+    const res = await fetch('/admin/bracket-builder/remove-slot', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({match_id: matchId, slot: slot})
+    });
+    const data = await res.json();
+    if (data.success) {
+        location.reload();
+    }
+}
+
+// ── Set winner ──
+async function setWinner(matchId, winnerId) {
+    if (!winnerId) return;
+    const res = await fetch(`/admin/match/${matchId}/result-ajax`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({winner_id: winnerId})
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+}
+
+// ── Generate slots ──
+async function generateSlots() {
+    const roundName = document.getElementById('round-select').value;
+    const bracketType = document.getElementById('bracket-type').value;
+    const qualSlots = parseInt(document.getElementById('qual-slots').value) || 2;
+
+    const res = await fetch(`/admin/bracket-builder/${CLASS_NAME}/generate`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            round_name: roundName,
+            bracket_type: bracketType,
+            qual_slots: qualSlots
+        })
+    });
+    const data = await res.json();
+    const msgEl = document.getElementById('generate-msg');
+
+    if (data.success) {
+        msgEl.innerHTML = `<div class="alert alert-success py-2">✅ Створено ${data.created} пар. Оновлення...</div>`;
+        setTimeout(() => location.reload(), 800);
+    } else {
+        msgEl.innerHTML = `<div class="alert alert-danger py-2">❌ ${data.error}</div>`;
+    }
+}
+
+// ── Delete round ──
+async function deleteRound(className, roundName, bracketType) {
+    if (!confirm(`Видалити весь раунд "${roundName}"? Всі матчі будуть втрачені.`)) return;
+
+    const res = await fetch('/admin/bracket-builder/delete-round', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({class_name: className, round_name: roundName, bracket_type: bracketType})
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+}
+
+// ── Filter students ──
+function filterStudents() {
+    const filter = document.getElementById('student-filter').value;
+    const cards = document.querySelectorAll('.student-card:not(.bye-card)');
+    cards.forEach(card => {
+        if (filter === 'all' || card.dataset.status === filter) {
+            card.style.display = 'inline-block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    updateCardsCount();
+}
+
+function updateCardsCount() {
+    const visible = document.querySelectorAll('.student-card:not(.bye-card):not([style*="display: none"])').length;
+    document.getElementById('cards-count').textContent = `${visible} учнів`;
+}
+
+function updateQualFields() {
+    const round = document.getElementById('round-select').value;
+    document.getElementById('qual-slots-wrap').style.display =
+        round === 'qualification' ? 'block' : 'none';
+}
+
+// Init
+updateCardsCount();
+</script>
+{% endblock %}
