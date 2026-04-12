@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Результати - Швидкочислення{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar {
+        position: sticky; top: 0; z-index: 50;
+        background: white; padding: 10px 0;
+        border-bottom: 2px solid #dee2e6;
+        margin-bottom: 16px;
+    }
+    .progress-wrap { margin-bottom: 16px; }
+    .round-section { margin-bottom: 24px; }
+    .round-header {
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 8px; padding-bottom: 6px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .round-badge {
+        display: inline-block; padding: 2px 10px;
+        border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    }
+    .results-table { font-size: 0.92rem; }
+    .results-table td { vertical-align: middle; padding: 7px 10px; }
+    .winner-name { font-weight: 700; color: #198754; }
+    .loser-name { color: #6c757d; }
+    .trophy { color: #198754; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-lg-10 mx-auto">
+        <h2 class="mb-3"><i class="bi bi-bar-chart-fill"></i> Результати</h2>
+
+        <!-- Прогрес -->
+        <div class="progress-wrap">
+            <div class="d-flex justify-content-between mb-1">
+                <small class="text-muted">Завершено матчів</small>
+                <small><strong>{{ completed }}</strong> / {{ total }}</small>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-success"
+                     style="width: {% if total > 0 %}{{ (completed / total * 100)|round|int }}{% else %}0{% endif %}%">
+                </div>
+            </div>
+        </div>
+
+        <!-- Фільтри -->
+        <div class="filter-bar">
+            <div class="row g-2">
+                <div class="col-6 col-md-3">
+                    <select id="filter-class" class="form-select form-select-sm" onchange="applyFilters()">
+                        <option value="">Всі класи</option>
+                        {% for c in classes %}
+                        <option value="{{ c }}" {% if class_filter == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select id="filter-round" class="form-select form-select-sm" onchange="applyFilters()">
+                        <option value="">Всі раунди</option>
+                        {% for r in rounds %}
+                        <option value="{{ r }}" {% if round_filter == r %}selected{% endif %}>
+                            {% if r == 'qualification' %}Кваліфікація
+                            {% elif r == 'final' %}Фінал
+                            {% else %}{{ r }} фіналу{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {% if matches %}
+            {% set cur_class = namespace(value='') %}
+            {% set cur_round = namespace(value='') %}
+
+            {% for match in matches %}
+                {% if match.class_name != cur_class.value or match.round_display != cur_round.value %}
+
+                    {% if cur_class.value != '' %}
+                        </tbody></table></div>
+                    {% endif %}
+
+                    {% set cur_class.value = match.class_name %}
+                    {% set cur_round.value = match.round_display %}
+
+                    <div class="round-section">
+                        <div class="round-header">
+                            <strong>Клас {{ match.class_name }}</strong>
+                            <span class="round-badge bg-primary text-white">{{ match.round_display }}</span>
+                        </div>
+                        <table class="table table-hover results-table mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="50">#</th>
+                                    <th>Переможець</th>
+                                    <th>Програв</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                {% endif %}
+
+                <tr>
+                    <td class="text-muted">{{ match.match_number }}</td>
+                    <td>
+                        <i class="bi bi-trophy-fill trophy"></i>
+                        <span class="winner-name">
+                            {{ match.winner.full_name if match.winner else '—' }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if match.student2_id == 'BYE' %}
+                            <span class="text-warning"><i class="bi bi-lightning-fill"></i> BYE</span>
+                        {% else %}
+                            {% set loser = match.student1 if match.winner_id == match.student2_id else match.student2 %}
+                            <span class="loser-name">{{ loser.full_name if loser else '—' }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+            {% endfor %}
+
+            {% if cur_class.value != '' %}
+                </tbody></table></div>
+            {% endif %}
+
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                {% if class_filter or round_filter %}
+                    Немає результатів за вибраними фільтрами.
+                {% else %}
+                    Поки немає завершених матчів.
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const cls = document.getElementById('filter-class').value;
+    const round = document.getElementById('filter-round').value;
+    const params = new URLSearchParams();
+    if (cls) params.set('class', cls);
+    if (round) params.set('round', round);
+    window.location.href = '/results?' + params.toString();
+}
+</script>
+{% endblock %}

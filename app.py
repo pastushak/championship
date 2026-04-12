@@ -89,17 +89,81 @@ def bracket(class_name):
 
 
 @app.route('/matches')
+@login_required
 def matches():
     class_filter = request.args.get('class', '')
-    query = Match.objects
+    status_filter = request.args.get('status', 'ready')
+
+    # Базовий запит — без BYE матчів
+    base_q = Match.objects(student2_id__ne='BYE', student1_id__ne='BYE')
     if class_filter:
-        query = query(class_name=class_filter)
-    matches_list = query.order_by('class_name', 'round_number', 'match_number')
+        base_q = base_q(class_name=class_filter)
+
+    # Фільтр по статусу — одразу в MongoDB
+    if status_filter == 'ready':
+        # Обидва гравці є і матч не завершений
+        query = base_q(
+            student1_id__ne=None,
+            student2_id__ne=None,
+            is_completed=False
+        )
+    elif status_filter == 'completed':
+        query = base_q(is_completed=True)
+    elif status_filter == 'pending':
+        query = base_q(is_completed=False)
+    else:
+        query = base_q
+
+    matches_list = list(query.order_by('class_name', 'round_number', 'match_number'))
+
     classes_list = sorted(Student.objects.distinct('class_name'))
+
+    # Статистика — тільки count запити, без завантаження даних
+    total = base_q.count()
+    completed = base_q(is_completed=True).count()
+    pending = total - completed
+
     return render_template('matches.html',
                            matches=matches_list,
                            classes=classes_list,
-                           class_filter=class_filter)
+                           class_filter=class_filter,
+                           status_filter=status_filter,
+                           total=total,
+                           completed=completed,
+                           pending=pending)
+
+
+
+@app.route('/results')
+def results():
+    """Публічна сторінка результатів — тільки перегляд"""
+    class_filter = request.args.get('class', '')
+    round_filter = request.args.get('round', '')
+
+    query = Match.objects(is_completed=True)
+    if class_filter:
+        query = query(class_name=class_filter)
+    if round_filter:
+        query = query(round_name=round_filter)
+
+    matches_list = list(query.order_by('class_name', 'round_number', 'match_number'))
+    classes_list = sorted(Student.objects.distinct('class_name'))
+
+    all_rounds = Match.objects.distinct('round_name')
+    round_order = ['qualification', '1/32', '1/16', '1/8', '1/4', '1/2', 'final']
+    rounds = sorted(all_rounds, key=lambda r: round_order.index(r) if r in round_order else 99)
+
+    total = Match.objects.count()
+    completed_count = Match.objects(is_completed=True).count()
+
+    return render_template('results.html',
+                           matches=matches_list,
+                           classes=classes_list,
+                           rounds=rounds,
+                           class_filter=class_filter,
+                           round_filter=round_filter,
+                           total=total,
+                           completed=completed_count)
 
 
 @app.route('/rules')
@@ -445,36 +509,22 @@ def get_next_round(current_round):
 
 
 def maybe_advance_round(match):
-    """Перевіряє чи всі матчі раунду завершені і просуває переможців далі"""
-    if match.round_name == 'final':
-        return  # фінал — далі нема
-
-    # Всі матчі цього раунду і типу сітки
-    all_matches = list(Match.objects(
-        class_name=match.class_name,
-        round_name=match.round_name,
-        bracket_type=match.bracket_type
-    ).order_by('match_number'))
-
-    # Перевіряємо чи всі завершені
-    if not all(m.is_completed for m in all_matches):
+    """Одразу після визначення переможця просуває його в наступний раунд"""
+    if not match.winner_id:
         return
-
-    winners = [m.winner_id for m in all_matches if m.winner_id]
-    if not winners:
+    if match.round_name == 'final':
         return
 
     # ── Кваліфікація ──
-    # Переможці йдуть у порожні слоти основної сітки (будь-який існуючий раунд)
+    # Переможець одразу йде в порожній слот основної сітки
     if match.bracket_type == 'qualification':
-        # Знаходимо перший існуючий раунд основної сітки
         main_round_match = Match.objects(
             class_name=match.class_name,
             bracket_type='main'
         ).order_by('round_number', 'match_number').first()
 
         if not main_round_match:
-            return  # основна сітка ще не створена — нічого не робимо
+            return
 
         main_round_name = main_round_match.round_name
         main_matches = list(Match.objects(
@@ -483,31 +533,16 @@ def maybe_advance_round(match):
             round_name=main_round_name
         ).order_by('match_number'))
 
-        # Розставляємо переможців кваліфікації у порожні слоти основної сітки
-        winner_idx = 0
+        # Знаходимо перший порожній слот
         for m in main_matches:
-            if winner_idx >= len(winners):
-                break
-            changed = False
             if not m.student1_id:
-                m.student1_id = winners[winner_idx]
-                winner_idx += 1
-                changed = True
-            if winner_idx < len(winners) and not m.student2_id:
-                m.student2_id = winners[winner_idx]
-                winner_idx += 1
-                changed = True
-            if changed:
-                # BYE автоматика
-                if m.student1_id and m.student2_id == 'BYE':
-                    m.winner_id = m.student1_id
-                    m.is_completed = True
-                    m.completed_date = datetime.utcnow()
-                elif m.student2_id and m.student1_id == 'BYE':
-                    m.winner_id = m.student2_id
-                    m.is_completed = True
-                    m.completed_date = datetime.utcnow()
-                m.save()
+                m.student1_id = match.winner_id
+                _check_bye_and_save(m)
+                return
+            if not m.student2_id:
+                m.student2_id = match.winner_id
+                _check_bye_and_save(m)
+                return
         return
 
     # ── Основна сітка ──
@@ -515,83 +550,91 @@ def maybe_advance_round(match):
     if not next_round:
         return
 
-    # Перевіряємо чи наступний раунд вже існує
-    existing = Match.objects(
+    # Визначаємо позицію в наступному раунді
+    # Пара N → наступна пара ceil(N/2), слот залежить від парності
+    next_match_num = math.ceil(match.match_number / 2)
+    slot = 'student1' if match.match_number % 2 == 1 else 'student2'
+
+    # Шукаємо існуючий матч наступного раунду
+    next_match = Match.objects(
         class_name=match.class_name,
+        bracket_type='main',
         round_name=next_round,
-        bracket_type='main'
-    ).count()
+        match_number=next_match_num
+    ).first()
 
-    if existing > 0:
-        # Раунд вже є — розставляємо переможців у порожні слоти
-        _fill_next_round_winners(match.class_name, next_round, 'main', all_matches)
-        return
+    if next_match:
+        # Слот вже існує — заповнюємо
+        if slot == 'student1' and not next_match.student1_id:
+            next_match.student1_id = match.winner_id
+        elif slot == 'student2' and not next_match.student2_id:
+            next_match.student2_id = match.winner_id
+        else:
+            # Слот зайнятий — шукаємо будь-який порожній
+            if not next_match.student1_id:
+                next_match.student1_id = match.winner_id
+            elif not next_match.student2_id:
+                next_match.student2_id = match.winner_id
+        _check_bye_and_save(next_match)
+    else:
+        # Матчу ще немає — створюємо
+        all_current = list(Match.objects(
+            class_name=match.class_name,
+            bracket_type='main',
+            round_name=match.round_name
+        ).order_by('match_number'))
+        total = len(all_current)
+        num_next = math.ceil(total / 2)
 
-    # Створюємо наступний раунд автоматично
-    num_next = math.ceil(len(winners) / 2)
-    if num_next == 0:
-        return
+        # Створюємо всі матчі наступного раунду якщо їх ще немає
+        for i in range(1, num_next + 1):
+            exists = Match.objects(
+                class_name=match.class_name,
+                bracket_type='main',
+                round_name=next_round,
+                match_number=i
+            ).first()
+            if not exists:
+                Match(
+                    class_name=match.class_name,
+                    bracket_type='main',
+                    round_name=next_round,
+                    round_number=ROUND_NUMBER.get(next_round, 99),
+                    match_number=i
+                ).save()
 
-    for i in range(num_next):
-        s1 = winners[i * 2] if i * 2 < len(winners) else None
-        s2 = winners[i * 2 + 1] if i * 2 + 1 < len(winners) else None
-
-        new_match = Match(
+        # Тепер заповнюємо потрібний слот
+        new_next = Match.objects(
             class_name=match.class_name,
             bracket_type='main',
             round_name=next_round,
-            round_number=ROUND_NUMBER.get(next_round, 99),
-            match_number=i + 1,
-            student1_id=s1,
-            student2_id=s2
-        )
-
-        # BYE автоматика
-        if s1 and s2 == 'BYE':
-            new_match.winner_id = s1
-            new_match.is_completed = True
-            new_match.completed_date = datetime.utcnow()
-        elif s2 and s1 == 'BYE':
-            new_match.winner_id = s2
-            new_match.is_completed = True
-            new_match.completed_date = datetime.utcnow()
-
-        new_match.save()
+            match_number=next_match_num
+        ).first()
+        if new_next:
+            if slot == 'student1':
+                new_next.student1_id = match.winner_id
+            else:
+                new_next.student2_id = match.winner_id
+            _check_bye_and_save(new_next)
 
 
-def _fill_next_round_winners(class_name, next_round, bracket_type, prev_matches):
-    """Розставляє переможців у вже існуючий наступний раунд"""
-    next_matches = list(Match.objects(
-        class_name=class_name,
-        round_name=next_round,
-        bracket_type=bracket_type
-    ).order_by('match_number'))
+def _check_bye_and_save(m):
+    """Перевіряє BYE і зберігає матч"""
+    if m.student1_id and m.student2_id == 'BYE':
+        m.winner_id = m.student1_id
+        m.is_completed = True
+        m.completed_date = datetime.utcnow()
+    elif m.student2_id and m.student1_id == 'BYE':
+        m.winner_id = m.student2_id
+        m.is_completed = True
+        m.completed_date = datetime.utcnow()
+    m.save()
+    # Рекурсивно просуваємо якщо BYE завершив матч
+    if m.is_completed and m.winner_id:
+        maybe_advance_round(m)
 
-    winners = [m.winner_id for m in prev_matches if m.winner_id]
 
-    for i, next_match in enumerate(next_matches):
-        s1 = winners[i * 2] if i * 2 < len(winners) else None
-        s2 = winners[i * 2 + 1] if i * 2 + 1 < len(winners) else None
-        changed = False
 
-        if s1 and not next_match.student1_id:
-            next_match.student1_id = s1
-            changed = True
-        if s2 and not next_match.student2_id:
-            next_match.student2_id = s2
-            changed = True
-
-        if changed:
-            # BYE автоматика
-            if next_match.student1_id and next_match.student2_id == 'BYE':
-                next_match.winner_id = next_match.student1_id
-                next_match.is_completed = True
-                next_match.completed_date = datetime.utcnow()
-            elif next_match.student2_id and next_match.student1_id == 'BYE':
-                next_match.winner_id = next_match.student2_id
-                next_match.is_completed = True
-                next_match.completed_date = datetime.utcnow()
-            next_match.save()
 
 
 @app.route('/admin/match/<match_id>/result-ajax', methods=['POST'])
@@ -625,15 +668,36 @@ def reset_match_result(match_id):
         match = Match.objects.get(id=match_id)
     except:
         return jsonify({'error': 'Матч не знайдено'}), 404
-    
+
+    old_winner_id = match.winner_id
+
     match.winner_id = None
     match.is_completed = False
     match.completed_date = None
-    
-    # Якщо це не BYE матч
-    if match.student2_id != 'BYE' and match.student1_id != 'BYE':
-        match.save()
-    
+    match.save()
+
+    # Прибираємо переможця з наступного раунду
+    if old_winner_id:
+        next_round = get_next_round(match.round_name)
+        if next_round:
+            next_match_num = math.ceil(match.match_number / 2)
+            next_match = Match.objects(
+                class_name=match.class_name,
+                bracket_type=match.bracket_type,
+                round_name=next_round,
+                match_number=next_match_num
+            ).first()
+            if next_match:
+                if next_match.student1_id == old_winner_id:
+                    next_match.student1_id = None
+                elif next_match.student2_id == old_winner_id:
+                    next_match.student2_id = None
+                # Скидаємо результат наступного матчу теж
+                next_match.winner_id = None
+                next_match.is_completed = False
+                next_match.completed_date = None
+                next_match.save()
+
     return jsonify({'success': True})
 
 
