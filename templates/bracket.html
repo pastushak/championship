@@ -205,7 +205,7 @@
                                     {% else %}
                                         <i class="bi bi-person-fill" style="color:#aaa;font-size:0.8rem"></i>
                                     {% endif %}
-                                    {{ match.student1.full_name if match.student1 else '?' }}
+                                    {{ students_map[match.student1_id].full_name if match.student1_id in students_map else '?' }}
                                 </div>
                             {% elif match.student1_id == 'BYE' %}
                                 <div class="player bye"><i class="bi bi-lightning-fill"></i> BYE</div>
@@ -225,7 +225,7 @@
                                     {% else %}
                                         <i class="bi bi-person-fill" style="color:#aaa;font-size:0.8rem"></i>
                                     {% endif %}
-                                    {{ match.student2.full_name if match.student2 else '?' }}
+                                    {{ students_map[match.student2_id].full_name if match.student2_id in students_map else '?' }}
                                 </div>
                             {% else %}
                                 <div class="player tbd"><i class="bi bi-hourglass-split"></i> Очікується...</div>
@@ -264,7 +264,7 @@
                         <div class="mobile-player {% if match.winner_id == match.student1_id %}winner{% elif match.is_completed %}loser{% endif %}">
                             {% if match.winner_id == match.student1_id %}<i class="bi bi-trophy-fill"></i>
                             {% else %}<i class="bi bi-person-fill"></i>{% endif %}
-                            {{ match.student1.full_name if match.student1 else '?' }}
+                            {{ students_map[match.student1_id].full_name if match.student1_id in students_map else '?' }}
                         </div>
                     {% else %}
                         <div class="mobile-player tbd"><i class="bi bi-hourglass-split"></i> Очікується...</div>
@@ -278,7 +278,7 @@
                         <div class="mobile-player {% if match.winner_id == match.student2_id %}winner{% elif match.is_completed %}loser{% endif %}">
                             {% if match.winner_id == match.student2_id %}<i class="bi bi-trophy-fill"></i>
                             {% else %}<i class="bi bi-person-fill"></i>{% endif %}
-                            {{ match.student2.full_name if match.student2 else '?' }}
+                            {{ students_map[match.student2_id].full_name if match.student2_id in students_map else '?' }}
                         </div>
                     {% else %}
                         <div class="mobile-player tbd"><i class="bi bi-hourglass-split"></i> Очікується...</div>

@@ -163,7 +163,7 @@
                             {% else %}
                                 <i class="bi bi-person-fill"></i>
                             {% endif %}
-                            {{ match.student1.full_name if match.student1 else '?' }}
+                            {{ (students_map[match.student1_id].full_name) if match.student1_id in students_map else '?' }}
                         </{% if can_vote %}button{% else %}div{% endif %}>
                     {% else %}
                         <div class="player-btn tbd">
@@ -183,7 +183,7 @@
                             {% else %}
                                 <i class="bi bi-person-fill"></i>
                             {% endif %}
-                            {{ match.student2.full_name if match.student2 else '?' }}
+                            {{ (students_map[match.student2_id].full_name) if match.student2_id in students_map else '?' }}
                         </{% if can_vote %}button{% else %}div{% endif %}>
                     {% else %}
                         <div class="player-btn tbd">

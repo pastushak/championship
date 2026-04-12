@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Суперфінал - Швидкочислення{% endblock %}
+
+{% block extra_css %}
+<style>
+    .finalist-card {
+        background: white;
+        border: 2px solid #0057b8;
+        border-radius: 10px;
+        padding: 12px;
+        text-align: center;
+    }
+    .finalist-card .class-badge {
+        font-size: 0.75rem; color: #6c757d;
+        display: block; margin-bottom: 4px;
+    }
+    .standings-table th { font-size: 0.85rem; }
+    .standings-table td { vertical-align: middle; }
+    .place-1 { background: #fff9e6; }
+    .place-2 { background: #f8f9fa; }
+    .place-3 { background: #fff5f0; }
+    .results-table { font-size: 0.9rem; }
+    .winner-name { font-weight: 700; color: #198754; }
+    .loser-name { color: #6c757d; }
+    .round-header {
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 8px; padding-bottom: 6px;
+        border-bottom: 2px solid #e9ecef;
+        margin-top: 16px;
+    }
+    .progress-wrap { margin-bottom: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-lg-10 mx-auto">
+
+        <div class="text-center mb-4">
+            <h1><i class="bi bi-trophy-fill text-warning"></i> Суперфінал</h1>
+            <p class="text-muted">Змагання між переможцями класів</p>
+        </div>
+
+        {% if standings %}
+
+        <!-- Прогрес -->
+        {% set total_sf = matches | list | length %}
+        {% set completed_sf = matches | selectattr('is_completed') | list | length %}
+        <div class="progress-wrap">
+            <div class="d-flex justify-content-between mb-1">
+                <small class="text-muted">Зіграно матчів</small>
+                <small><strong>{{ completed_sf }}</strong> / {{ total_sf }}</small>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-warning"
+                     style="width: {% if total_sf > 0 %}{{ (completed_sf / total_sf * 100)|round|int }}{% else %}0{% endif %}%">
+                </div>
+            </div>
+        </div>
+
+        <!-- Залікова таблиця -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="bi bi-table"></i> Залікова таблиця</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table standings-table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="60">Місце</th>
+                            <th>Учасник</th>
+                            <th width="80" class="text-center">Клас</th>
+                            <th width="60" class="text-center">✅</th>
+                            <th width="60" class="text-center">❌</th>
+                            <th width="60" class="text-center">Ігор</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in standings %}
+                        <tr class="{% if loop.index == 1 %}place-1{% elif loop.index == 2 %}place-2{% elif loop.index == 3 %}place-3{% endif %}">
+                            <td class="fw-bold">
+                                {% if loop.index == 1 %}🥇
+                                {% elif loop.index == 2 %}🥈
+                                {% elif loop.index == 3 %}🥉
+                                {% else %}{{ loop.index }}{% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ s.student.last_name }}</strong> {{ s.student.first_name }}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary">{{ s.student.class_name }}</span>
+                            </td>
+                            <td class="text-center text-success fw-bold">{{ s.wins }}</td>
+                            <td class="text-center text-danger">{{ s.losses }}</td>
+                            <td class="text-center text-muted">{{ s.played }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Матчі -->
+        <h5 class="mb-3">Всі матчі</h5>
+        <table class="table results-table">
+            <thead class="table-light">
+                <tr>
+                    <th width="50">#</th>
+                    <th>Переможець</th>
+                    <th>Програв</th>
+                    <th width="80" class="text-center">Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr>
+                    <td class="text-muted">{{ match.match_number }}</td>
+                    <td>
+                        {% if match.is_completed %}
+                            <i class="bi bi-trophy-fill text-success"></i>
+                            <span class="winner-name">{{ match.winner.full_name if match.winner else '—' }}</span>
+                        {% else %}
+                            <span class="text-muted">{{ match.student1.full_name if match.student1 else '?' }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if match.is_completed %}
+                            {% set loser = match.student1 if match.winner_id == match.student2_id else match.student2 %}
+                            <span class="loser-name">{{ loser.full_name if loser else '—' }}</span>
+                        {% else %}
+                            <span class="text-muted">{{ match.student2.full_name if match.student2 else '?' }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if match.is_completed %}
+                            <span class="badge bg-success">✓</span>
+                        {% else %}
+                            <span class="badge bg-secondary">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-hourglass-split fs-3 d-block mb-2"></i>
+            <strong>Суперфінал ще не розпочався</strong><br>
+            <small class="text-muted">Очікуємо переможців фіналів усіх класів</small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

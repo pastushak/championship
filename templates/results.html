@@ -108,7 +108,7 @@
                     <td>
                         <i class="bi bi-trophy-fill trophy"></i>
                         <span class="winner-name">
-                            {{ match.winner.full_name if match.winner else '—' }}
+                            {{ (students_map[match.winner_id].full_name) if match.winner_id in students_map else '—' }}
                         </span>
                     </td>
                     <td>
@@ -116,7 +116,7 @@
                             <span class="text-warning"><i class="bi bi-lightning-fill"></i> BYE</span>
                         {% else %}
                             {% set loser = match.student1 if match.winner_id == match.student2_id else match.student2 %}
-                            <span class="loser-name">{{ loser.full_name if loser else '—' }}</span>
+                            <span class="loser-name">{% set loser_id = match.student1_id if match.winner_id == match.student2_id else match.student2_id %}{{ (students_map[loser_id].full_name) if loser_id in students_map else '—' }}</span>
                         {% endif %}
                     </td>
                 </tr>

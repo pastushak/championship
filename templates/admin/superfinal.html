@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Суперфінал - Адмінка{% endblock %}
+
+{% block extra_css %}
+<style>
+    .finalist-card {
+        background: white;
+        border: 2px solid #0057b8;
+        border-radius: 10px;
+        padding: 12px 16px;
+        text-align: center;
+        font-weight: 600;
+    }
+    .finalist-card .class-badge {
+        font-size: 0.75rem;
+        color: #6c757d;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .match-card {
+        border-radius: 10px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        border: 1.5px solid #dee2e6;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .match-card.completed { border-color: #198754; }
+    .match-header {
+        background: #f8f9fa;
+        padding: 7px 12px;
+        font-size: 0.8rem;
+        color: #6c757d;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .match-header.done { background: #d1e7dd; color: #198754; }
+    .player-btn {
+        width: 100%; padding: 14px 12px;
+        font-size: 1rem; font-weight: 500;
+        border: none; background: white;
+        text-align: left; cursor: pointer;
+        display: flex; align-items: center; gap: 8px;
+        transition: background 0.15s;
+    }
+    .player-btn:hover { background: #e7f1ff; }
+    .player-btn.winner { background: #d1e7dd; color: #198754; font-weight: 700; cursor: default; }
+    .player-btn.winner:hover { background: #d1e7dd; }
+    .player-btn.loser { background: white; color: #6c757d; cursor: default; }
+    .player-btn.loser:hover { background: white; }
+    .vs-row {
+        text-align: center; padding: 3px;
+        background: #f8f9fa; color: #bbb;
+        font-size: 0.75rem; font-weight: bold;
+        border-top: 1px solid #eee; border-bottom: 1px solid #eee;
+    }
+    .cancel-btn {
+        background: none; border: none;
+        color: #dc3545; font-size: 0.75rem;
+        cursor: pointer; padding: 1px 6px; border-radius: 4px;
+    }
+    .cancel-btn:hover { background: #f8d7da; }
+    .standings-table th { font-size: 0.85rem; }
+    .standings-table td { vertical-align: middle; }
+    .medal { font-size: 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-lg-10 mx-auto">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Адмінка</a></li>
+                <li class="breadcrumb-item active">Суперфінал</li>
+            </ol>
+        </nav>
+
+        <h2 class="mb-4"><i class="bi bi-trophy-fill text-warning"></i> Суперфінал</h2>
+
+        <!-- Фіналісти -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="bi bi-people-fill"></i> Учасники суперфіналу</h6>
+            </div>
+            <div class="card-body">
+                {% if finalists %}
+                <div class="row g-3 mb-3">
+                    {% for f in finalists %}
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <div class="finalist-card">
+                            <span class="class-badge">{{ f.class_name }}</span>
+                            {{ f.student.last_name }}<br>{{ f.student.first_name }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if sf_matches.count() == 0 %}
+                <form method="POST">
+                    <input type="hidden" name="action" value="generate">
+                    {% for f in finalists %}
+                    <input type="hidden" name="finalist_ids" value="{{ f.student.id }}">
+                    {% endfor %}
+                    <button type="submit" class="btn btn-warning"
+                            onclick="return confirm('Згенерувати {{ finalists|length * (finalists|length - 1) // 2 }} матчів суперфіналу?')">
+                        <i class="bi bi-shuffle"></i> Згенерувати матчі ({{ finalists|length * (finalists|length - 1) // 2 }} пар)
+                    </button>
+                </form>
+                {% else %}
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="text-success"><i class="bi bi-check-circle"></i> Матчі згенеровано</span>
+                    <form method="POST" class="d-inline">
+                        <input type="hidden" name="action" value="generate">
+                        {% for f in finalists %}
+                        <input type="hidden" name="finalist_ids" value="{{ f.student.id }}">
+                        {% endfor %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                onclick="return confirm('Перегенерувати? Всі результати будуть втрачені!')">
+                            <i class="bi bi-arrow-clockwise"></i> Перегенерувати
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Не всі класи мають переможців фіналу. Завершіть фінальні матчі класів щоб учасники з'явились тут.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if sf_matches.count() > 0 %}
+
+        <!-- Таблиця результатів -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="bi bi-table"></i> Залікова таблиця</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table standings-table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="50">Місце</th>
+                            <th>Учасник</th>
+                            <th width="80" class="text-center">Клас</th>
+                            <th width="60" class="text-center">✅ Пер.</th>
+                            <th width="60" class="text-center">❌ Пор.</th>
+                            <th width="60" class="text-center">Ігор</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set standings = namespace(data=[]) %}
+                        {% set all_ids = namespace(ids=[]) %}
+                        {% for m in sf_matches %}
+                            {% if m.student1_id and m.student1_id not in all_ids.ids %}
+                                {% set _ = all_ids.ids.append(m.student1_id) %}
+                            {% endif %}
+                            {% if m.student2_id and m.student2_id not in all_ids.ids %}
+                                {% set _ = all_ids.ids.append(m.student2_id) %}
+                            {% endif %}
+                        {% endfor %}
+
+                        {% for f in finalists %}
+                        {% set sid = f.student.id | string %}
+                        {% set wins = namespace(v=0) %}
+                        {% set losses = namespace(v=0) %}
+                        {% set played = namespace(v=0) %}
+                        {% for m in sf_matches %}
+                            {% if m.is_completed %}
+                                {% if m.student1_id == sid or m.student2_id == sid %}
+                                    {% set played.v = played.v + 1 %}
+                                    {% if m.winner_id == sid %}
+                                        {% set wins.v = wins.v + 1 %}
+                                    {% else %}
+                                        {% set losses.v = losses.v + 1 %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                        <tr>
+                            <td>
+                                {% if loop.index == 1 %}🥇
+                                {% elif loop.index == 2 %}🥈
+                                {% elif loop.index == 3 %}🥉
+                                {% else %}{{ loop.index }}{% endif %}
+                            </td>
+                            <td><strong>{{ f.student.last_name }}</strong> {{ f.student.first_name }}</td>
+                            <td class="text-center"><span class="badge bg-primary">{{ f.class_name }}</span></td>
+                            <td class="text-center text-success fw-bold">{{ wins.v }}</td>
+                            <td class="text-center text-danger">{{ losses.v }}</td>
+                            <td class="text-center text-muted">{{ played.v }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Матчі -->
+        <h5 class="mb-3">Матчі суперфіналу</h5>
+        <div class="row">
+            <div class="col-12 col-md-8 col-lg-6">
+                {% for match in sf_matches %}
+                {% set both = match.student1_id and match.student2_id %}
+                {% set can_vote = both and not match.is_completed %}
+
+                <div class="match-card {% if match.is_completed %}completed{% endif %}" id="sf-card-{{ match.id }}">
+                    <div class="match-header {% if match.is_completed %}done{% endif %}" id="sf-header-{{ match.id }}">
+                        <span>Матч #{{ match.match_number }}</span>
+                        <span id="sf-status-{{ match.id }}">
+                            {% if match.is_completed %}
+                                <i class="bi bi-check-circle-fill"></i> Завершено
+                                <button class="cancel-btn ms-1" onclick="sfCancel('{{ match.id }}')">✕ Скасувати</button>
+                            {% else %}
+                                <i class="bi bi-play-circle"></i> Оберіть переможця
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <{% if can_vote %}button onclick="sfSetWinner('{{ match.id }}', '{{ match.student1_id }}')"{% else %}div{% endif %}
+                        class="player-btn {% if match.winner_id == match.student1_id %}winner{% elif match.is_completed %}loser{% endif %}"
+                        id="sf-p1-{{ match.id }}">
+                        {% if match.winner_id == match.student1_id %}<i class="bi bi-trophy-fill text-success"></i>
+                        {% else %}<i class="bi bi-person-fill text-muted"></i>{% endif %}
+                        {{ match.student1.full_name if match.student1 else '?' }}
+                        {% for f in finalists %}{% if f.student.id | string == match.student1_id %}
+                            <span class="badge bg-primary ms-auto" style="font-size:0.7rem">{{ f.class_name }}</span>
+                        {% endif %}{% endfor %}
+                    </{% if can_vote %}button{% else %}div{% endif %}>
+
+                    <div class="vs-row">vs</div>
+
+                    <{% if can_vote %}button onclick="sfSetWinner('{{ match.id }}', '{{ match.student2_id }}')"{% else %}div{% endif %}
+                        class="player-btn {% if match.winner_id == match.student2_id %}winner{% elif match.is_completed %}loser{% endif %}"
+                        id="sf-p2-{{ match.id }}">
+                        {% if match.winner_id == match.student2_id %}<i class="bi bi-trophy-fill text-success"></i>
+                        {% else %}<i class="bi bi-person-fill text-muted"></i>{% endif %}
+                        {{ match.student2.full_name if match.student2 else '?' }}
+                        {% for f in finalists %}{% if f.student.id | string == match.student2_id %}
+                            <span class="badge bg-primary ms-auto" style="font-size:0.7rem">{{ f.class_name }}</span>
+                        {% endif %}{% endfor %}
+                    </{% if can_vote %}button{% else %}div{% endif %}>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+async function sfSetWinner(matchId, winnerId) {
+    const btn = event.currentTarget;
+    btn.style.opacity = '0.5';
+    btn.disabled = true;
+
+    const res = await fetch('/admin/superfinal/result-ajax', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({match_id: matchId, winner_id: winnerId})
+    });
+    const data = await res.json();
+    if (data.success) {
+        location.reload();
+    } else {
+        btn.style.opacity = '1';
+        btn.disabled = false;
+        alert('Помилка збереження');
+    }
+}
+
+async function sfCancel(matchId) {
+    const res = await fetch('/admin/superfinal/reset-ajax', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({match_id: matchId})
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert('Помилка скасування');
+}
+</script>
+{% endblock %}

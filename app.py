@@ -76,16 +76,27 @@ def class_detail(class_name):
 
 @app.route('/bracket/<class_name>')
 def bracket(class_name):
-    matches = Match.objects(class_name=class_name).order_by('round_number', 'match_number')
+    matches_list = list(Match.objects(class_name=class_name).order_by('round_number', 'match_number'))
+
+    # Один запит для всіх учнів
+    student_ids = set()
+    for m in matches_list:
+        if m.student1_id and m.student1_id != 'BYE': student_ids.add(m.student1_id)
+        if m.student2_id and m.student2_id != 'BYE': student_ids.add(m.student2_id)
+        if m.winner_id: student_ids.add(m.winner_id)
+    students_map = {str(s.id): s for s in Student.objects(id__in=list(student_ids))} if student_ids else {}
+
     rounds = {}
-    for match in matches:
+    for match in matches_list:
         key = (match.round_number, match.round_name)
         if key not in rounds:
             rounds[key] = []
         rounds[key].append(match)
+
     return render_template('bracket.html',
                            class_name=class_name,
-                           rounds=sorted(rounds.items()))
+                           rounds=sorted(rounds.items()),
+                           students_map=students_map)
 
 
 @app.route('/matches')
@@ -147,6 +158,15 @@ def results():
         query = query(round_name=round_filter)
 
     matches_list = list(query.order_by('class_name', 'round_number', 'match_number'))
+
+    # Один запит для всіх учнів
+    student_ids = set()
+    for m in matches_list:
+        if m.student1_id: student_ids.add(m.student1_id)
+        if m.student2_id and m.student2_id != 'BYE': student_ids.add(m.student2_id)
+        if m.winner_id: student_ids.add(m.winner_id)
+    students_map = {str(s.id): s for s in Student.objects(id__in=list(student_ids))} if student_ids else {}
+
     classes_list = sorted(Student.objects.distinct('class_name'))
 
     all_rounds = Match.objects.distinct('round_name')
@@ -158,6 +178,7 @@ def results():
 
     return render_template('results.html',
                            matches=matches_list,
+                           students_map=students_map,
                            classes=classes_list,
                            rounds=rounds,
                            class_filter=class_filter,
@@ -699,6 +720,39 @@ def reset_match_result(match_id):
                 next_match.save()
 
     return jsonify({'success': True})
+
+
+@app.route('/admin/superfinal/result-ajax', methods=['POST'])
+@login_required
+def superfinal_result_ajax():
+    data = request.get_json()
+    match_id = data.get('match_id')
+    winner_id = data.get('winner_id')
+    try:
+        m = SuperfinalMatch.objects.get(id=match_id)
+        m.winner_id = winner_id
+        m.is_completed = True
+        m.completed_date = datetime.utcnow()
+        m.save()
+        return jsonify({'success': True})
+    except:
+        return jsonify({'error': 'Помилка'}), 404
+
+
+@app.route('/admin/superfinal/reset-ajax', methods=['POST'])
+@login_required
+def superfinal_reset_ajax():
+    data = request.get_json()
+    match_id = data.get('match_id')
+    try:
+        m = SuperfinalMatch.objects.get(id=match_id)
+        m.winner_id = None
+        m.is_completed = False
+        m.completed_date = None
+        m.save()
+        return jsonify({'success': True})
+    except:
+        return jsonify({'error': 'Помилка'}), 404
 
 
 # ==================== РАНДОМАЙЗЕР ====================

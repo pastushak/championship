@@ -37,6 +37,10 @@
                             href="{{ url_for('results') }}">Результати</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'superfinal' %}active{% endif %}"
+                        href="{{ url_for('superfinal') }}">Суперфінал</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'rules' %}active{% endif %}" 
                         href="{{ url_for('rules') }}">Правила</a>
                     </li>
