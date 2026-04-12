@@ -108,7 +108,7 @@
                     <td>
                         <i class="bi bi-trophy-fill trophy"></i>
                         <span class="winner-name">
-                            {{ (students_map[match.winner_id].full_name) if match.winner_id in students_map else '—' }}
+                            {{ (students_map[match.winner_id|string].full_name) if match.winner_id|string in students_map else '—' }}
                         </span>
                     </td>
                     <td>

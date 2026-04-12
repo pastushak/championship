@@ -5,8 +5,37 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from models import init_db, Student, Match, SuperfinalMatch, Championship
 from config import Config
 from datetime import datetime
+from bson import ObjectId
 import random
 import math
+
+
+def build_students_map(matches_list):
+    """Завантажує всіх учнів одним запитом і повертає словник id->student"""
+    student_ids = set()
+    for m in matches_list:
+        if m.student1_id and m.student1_id != 'BYE':
+            student_ids.add(m.student1_id)
+        if m.student2_id and m.student2_id != 'BYE':
+            student_ids.add(m.student2_id)
+        if m.winner_id:
+            student_ids.add(m.winner_id)
+    if not student_ids:
+        return {}
+    try:
+        object_ids = [ObjectId(sid) for sid in student_ids]
+        students = Student.objects(id__in=object_ids)
+        return {str(s.id): s for s in students}
+    except Exception:
+        # Fallback — окремі запити
+        result = {}
+        for sid in student_ids:
+            try:
+                s = Student.objects.get(id=sid)
+                result[str(s.id)] = s
+            except Exception:
+                pass
+        return result
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -78,13 +107,7 @@ def class_detail(class_name):
 def bracket(class_name):
     matches_list = list(Match.objects(class_name=class_name).order_by('round_number', 'match_number'))
 
-    # Один запит для всіх учнів
-    student_ids = set()
-    for m in matches_list:
-        if m.student1_id and m.student1_id != 'BYE': student_ids.add(m.student1_id)
-        if m.student2_id and m.student2_id != 'BYE': student_ids.add(m.student2_id)
-        if m.winner_id: student_ids.add(m.winner_id)
-    students_map = {str(s.id): s for s in Student.objects(id__in=list(student_ids))} if student_ids else {}
+    students_map = build_students_map(matches_list)
 
     rounds = {}
     for match in matches_list:
@@ -127,15 +150,17 @@ def matches():
 
     matches_list = list(query.order_by('class_name', 'round_number', 'match_number'))
 
+    students_map = build_students_map(matches_list)
+
     classes_list = sorted(Student.objects.distinct('class_name'))
 
-    # Статистика — тільки count запити, без завантаження даних
     total = base_q.count()
     completed = base_q(is_completed=True).count()
     pending = total - completed
 
     return render_template('matches.html',
                            matches=matches_list,
+                           students_map=students_map,
                            classes=classes_list,
                            class_filter=class_filter,
                            status_filter=status_filter,
@@ -159,13 +184,7 @@ def results():
 
     matches_list = list(query.order_by('class_name', 'round_number', 'match_number'))
 
-    # Один запит для всіх учнів
-    student_ids = set()
-    for m in matches_list:
-        if m.student1_id: student_ids.add(m.student1_id)
-        if m.student2_id and m.student2_id != 'BYE': student_ids.add(m.student2_id)
-        if m.winner_id: student_ids.add(m.winner_id)
-    students_map = {str(s.id): s for s in Student.objects(id__in=list(student_ids))} if student_ids else {}
+    students_map = build_students_map(matches_list)
 
     classes_list = sorted(Student.objects.distinct('class_name'))
 
