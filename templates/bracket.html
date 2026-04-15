@@ -4,300 +4,618 @@
 
 {% block extra_css %}
 <style>
-    .bracket-wrap {
-        overflow-x: auto;
-        padding-bottom: 20px;
-    }
-    .bracket {
-        display: flex;
-        gap: 0;
-        min-width: max-content;
-        align-items: flex-start;
-        padding: 20px 10px;
-    }
+:root {
+    --match-w: 200px;
+    --player-h: 34px;
+    --connector-w: 40px;
+    --border-radius: 7px;
+    --winner-bg: #d1fae5;
+    --winner-color: #065f46;
+    --bye-bg: #fef9c3;
+    --bye-color: #854d0e;
+}
 
-    /* Колонка раунду */
-    .round-col {
-        display: flex;
-        flex-direction: column;
-        min-width: 220px;
-        max-width: 240px;
-    }
-    .round-title {
-        text-align: center;
-        font-weight: 700;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #0057b8;
-        background: #e7f1ff;
-        border-radius: 6px;
-        padding: 6px 10px;
-        margin-bottom: 12px;
-    }
-    .round-title.qual { color: #856404; background: #fff3cd; }
+/* ВКЛАДКИ */
+.bracket-tabs {
+    display: flex; gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+}
+.bracket-tab {
+    padding: 8px 20px;
+    border-radius: 8px 8px 0 0;
+    border: none; background: #f1f5f9;
+    color: #64748b; font-weight: 600;
+    font-size: 0.85rem; cursor: pointer;
+    transition: all 0.2s; margin-bottom: -2px;
+    border-bottom: 2px solid transparent;
+}
+.bracket-tab:hover { background: #e2e8f0; color: #334155; }
+.bracket-tab.active { background: white; color: #0057b8; border-bottom: 2px solid #0057b8; }
+.bracket-tab.qual-tab.active { color: #854d0e; border-bottom-color: #f59e0b; }
 
-    /* Матч */
-    .match-wrap {
-        display: flex;
-        align-items: center;
-        flex: 1;
-    }
-    .match-box {
-        background: white;
-        border: 1.5px solid #dee2e6;
-        border-radius: 8px;
-        overflow: hidden;
-        width: 100%;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        transition: box-shadow 0.2s;
-    }
-    .match-box:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
-    .match-box.completed { border-color: #198754; }
-    .match-box.pending { border-color: #dee2e6; opacity: 0.7; }
+.bracket-view { display: none; }
+.bracket-view.active { display: block; }
 
-    .match-num {
-        font-size: 0.65rem;
-        color: #aaa;
-        padding: 3px 8px;
-        background: #f8f9fa;
-        border-bottom: 1px solid #eee;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-    }
+/* ДЕСКТОП */
+.bracket-scroll { overflow-x: auto; padding: 16px 0 32px 0; }
+.bracket-canvas {
+    display: flex; align-items: flex-start;
+    position: relative; min-width: max-content;
+}
 
-    .player {
-        padding: 8px 10px;
-        font-size: 0.88rem;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 36px;
-    }
-    .player.winner {
-        background: #d1e7dd;
-        color: #198754;
-        font-weight: 700;
-    }
-    .player.loser { color: #6c757d; }
-    .player.tbd { color: #bbb; font-style: italic; }
-    .player.bye { color: #856404; background: #fffbe6; font-style: italic; }
+.round-col { display: flex; flex-direction: column; width: var(--match-w); flex-shrink: 0; }
+.round-label {
+    text-align: center; font-size: 0.72rem;
+    font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #64748b;
+    padding: 6px 0 12px;
+}
+.round-label.final-label { color: #0057b8; }
+.round-label.qual-label { color: #854d0e; }
 
-    .player-divider {
-        height: 1px;
-        background: #eee;
-        margin: 0;
-    }
+.match-item { position: relative; width: var(--match-w); }
+.matches-container {
+    display: flex;
+    flex-direction: column;
+}
+.match-spacer {
+    flex: 1;
+    min-height: 12px;
+}
+.match-box {
+    width: var(--match-w); background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s;
+}
+.match-box:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.match-box.completed { border-color: #a7f3d0; }
 
-    /* З'єднувальні лінії між раундами */
-    .connector {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 30px;
-        flex-shrink: 0;
-    }
-    .connector-line {
-        width: 100%;
-        border-top: 2px solid #dee2e6;
-    }
+.match-num-label {
+    font-size: 0.6rem; color: #94a3b8;
+    padding: 3px 8px 2px; background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+    font-weight: 600; letter-spacing: 0.3px;
+}
 
-    /* Спейсери між матчами */
-    .match-spacer {
-        flex: 1;
-    }
+.player-row {
+    height: var(--player-h); padding: 0 8px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.82rem; transition: background 0.15s;
+}
+.player-row + .player-row { border-top: 1px solid #f1f5f9; }
+.player-row.winner { background: var(--winner-bg); color: var(--winner-color); font-weight: 700; }
+.player-row.loser { color: #94a3b8; }
+.player-row.tbd { color: #94a3b8; font-style: italic; font-size: 0.78rem; }
+.player-row.bye-row { background: var(--bye-bg); color: var(--bye-color); font-style: italic; }
+.player-icon { font-size: 0.7rem; flex-shrink: 0; }
+.player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 
-    /* Мобільний вигляд — вертикальний список */
-    @media (max-width: 768px) {
-        .bracket { display: none; }
-        .bracket-mobile { display: block !important; }
-    }
-    .bracket-mobile { display: none; }
+/* Підсвітка ланцюжка */
+.player-row[data-pid] { cursor: pointer; }
+.chain-active .player-row[data-pid].in-chain {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+    font-weight: 600;
+}
+.chain-active .match-box:has(.in-chain) {
+    border-color: #93c5fd !important;
+    box-shadow: 0 0 0 2px #bfdbfe !important;
+}
 
-    /* Мобільні картки */
-    .mobile-round { margin-bottom: 20px; }
-    .mobile-round-title {
-        font-weight: 700; font-size: 0.85rem;
-        text-transform: uppercase; letter-spacing: 0.5px;
-        color: #0057b8; background: #e7f1ff;
-        border-radius: 6px; padding: 6px 12px;
-        margin-bottom: 10px; display: inline-block;
-    }
-    .mobile-match {
-        background: white;
-        border: 1.5px solid #dee2e6;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        overflow: hidden;
-    }
-    .mobile-match.completed { border-color: #198754; }
-    .mobile-match-num {
-        font-size: 0.7rem; color: #aaa;
-        padding: 3px 10px; background: #f8f9fa;
-        border-bottom: 1px solid #eee;
-    }
-    .mobile-player {
-        padding: 10px 12px;
-        font-size: 0.92rem;
-        display: flex; align-items: center; gap: 8px;
-    }
-    .mobile-player.winner {
-        background: #d1e7dd; color: #198754; font-weight: 700;
-    }
-    .mobile-player.loser { color: #6c757d; }
-    .mobile-player.tbd { color: #bbb; font-style: italic; }
-    .mobile-player.bye { color: #856404; background: #fffbe6; }
-    .mobile-vs {
-        text-align: center; padding: 2px;
-        background: #f8f9fa; color: #bbb;
-        font-size: 0.7rem; border-top: 1px solid #eee;
-        border-bottom: 1px solid #eee;
-    }
+/* Конектори */
+.connector-col {
+    width: var(--connector-w); flex-shrink: 0;
+    position: relative; align-self: stretch;
+}
+
+/* МОБІЛЬНИЙ */
+.mobile-bracket { display: none; }
+.mobile-nav {
+    display: flex; justify-content: space-between;
+    align-items: center; background: #f8fafc;
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 10px 16px; margin-bottom: 16px;
+}
+.mobile-nav-btn {
+    background: white; border: 1.5px solid #e2e8f0;
+    border-radius: 8px; padding: 6px 14px;
+    font-size: 0.85rem; font-weight: 600;
+    color: #334155; cursor: pointer; transition: all 0.15s;
+}
+.mobile-nav-btn:hover:not(:disabled) { background: #0057b8; color: white; border-color: #0057b8; }
+.mobile-nav-btn:disabled { opacity: 0.3; cursor: default; }
+.mobile-round-title { font-weight: 700; font-size: 0.9rem; color: #0057b8; }
+
+.mobile-match {
+    background: white; border: 1.5px solid #e2e8f0;
+    border-radius: var(--border-radius); margin-bottom: 10px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.mobile-match.completed { border-color: #a7f3d0; }
+.mobile-match-num {
+    font-size: 0.65rem; color: #94a3b8; padding: 3px 10px;
+    background: #f8fafc; border-bottom: 1px solid #f1f5f9; font-weight: 600;
+}
+.mobile-player {
+    padding: 11px 12px; font-size: 0.92rem;
+    display: flex; align-items: center; gap: 8px; min-height: 40px;
+}
+.mobile-player + .mobile-player { border-top: 1px solid #f1f5f9; }
+.mobile-player.winner { background: var(--winner-bg); color: var(--winner-color); font-weight: 700; }
+.mobile-player.loser { color: #94a3b8; }
+.mobile-player.tbd { color: #94a3b8; font-style: italic; }
+.mobile-player.bye-row { background: var(--bye-bg); color: var(--bye-color); font-style: italic; }
+
+@media (max-width: 640px) {
+    .bracket-scroll { display: none; }
+    .mobile-bracket { display: block; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Головна</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('classes') }}">Класи</a></li>
-                <li class="breadcrumb-item active">{{ class_name }} — Сітка</li>
-            </ol>
-        </nav>
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-diagram-2"></i> Турнірна сітка: {{ class_name }}</h2>
-            <a href="{{ url_for('results') }}?class={{ class_name }}"
-               class="btn btn-outline-success btn-sm">
-                <i class="bi bi-bar-chart"></i> Результати
-            </a>
+{# ═══ МАКРОС — визначений ДО використання ═══ #}
+{% macro render_bracket(bracket_rounds, smap, view_id) %}
+
+{# Збираємо дані матчів для JS #}
+{% set all_m = [] %}
+{% for (rnum, rname), matches_in_round in bracket_rounds %}
+    {% for match in matches_in_round %}
+        {% set p1 = match.student1_id|string if match.student1_id and match.student1_id != 'BYE' else '' %}
+        {% set p2 = match.student2_id|string if match.student2_id and match.student2_id != 'BYE' else '' %}
+        {% set w = match.winner_id|string if match.winner_id else '' %}
+        {% set _ = all_m.append({'id': match.id|string, 'r': rnum, 'mn': match.match_number, 'p1': p1, 'p2': p2, 'w': w}) %}
+    {% endfor %}
+{% endfor %}
+
+{# Список назв раундів для мобільної навігації #}
+{% set round_names = [] %}
+{% for (rnum, rname), _ in bracket_rounds %}
+    {% if rname == 'qualification' %}{% set _ = round_names.append('⚡ Кваліфікація') %}
+    {% elif rname == 'final' %}{% set _ = round_names.append('🏆 Фінал') %}
+    {% else %}{% set _ = round_names.append(rname ~ ' фіналу') %}{% endif %}
+{% endfor %}
+
+{# ── ДЕСКТОП ── #}
+<div class="bracket-scroll">
+<div class="bracket-canvas" id="canvas-{{ view_id }}" onmouseleave="clearChain()">
+{% for (rnum, rname), matches_in_round in bracket_rounds %}
+
+    {# Конектор перед кожним раундом (крім першого) #}
+    {% if not loop.first %}
+    <div class="connector-col" id="conn-{{ view_id }}-{{ loop.index }}"></div>
+    {% endif %}
+
+    <div class="round-col" id="rcol-{{ view_id }}-{{ loop.index }}">
+        <div class="round-label {% if rname == 'final' %}final-label{% elif rname == 'qualification' %}qual-label{% endif %}">
+            {% if rname == 'qualification' %}⚡ Кваліфікація
+            {% elif rname == 'final' %}🏆 Фінал
+            {% else %}{{ rname }} фіналу{% endif %}
         </div>
 
-        {% if rounds %}
+        <div id="matches-{{ view_id }}-{{ loop.index }}"
+             class="matches-container">
+        {% for match in matches_in_round %}
+            {% set p1_id = match.student1_id|string if match.student1_id and match.student1_id != 'BYE' else '' %}
+            {% set p2_id = match.student2_id|string if match.student2_id and match.student2_id != 'BYE' else '' %}
+            {% set w_id = match.winner_id|string if match.winner_id else '' %}
+            {% set is_bye = match.student2_id == 'BYE' %}
 
-        <!-- ══ ДЕСКТОП: горизонтальна сітка ══ -->
-        <div class="bracket-wrap">
-            <div class="bracket">
-                {% for (round_num, round_name), matches_in_round in rounds %}
-                {% set is_qual = round_name == 'qualification' %}
+            <div class="match-item" id="mi-{{ view_id }}-{{ rnum }}-{{ match.match_number }}">
+                <div class="match-box {% if match.is_completed %}completed{% endif %}">
+                    <div class="match-num-label">ПАРА #{{ match.match_number }}</div>
 
-                <!-- Колонка раунду -->
-                <div class="round-col">
-                    <div class="round-title {% if is_qual %}qual{% endif %}">
-                        {% if is_qual %}⚡ Кваліфікація
-                        {% elif round_name == 'final' %}🏆 Фінал
-                        {% else %}{{ round_name }} фіналу{% endif %}
-                    </div>
-
-                    <div class="d-flex flex-column h-100" style="gap: 8px;">
-                        {% for match in matches_in_round %}
-                        <div class="match-box {% if match.is_completed %}completed{% elif not match.student1_id or not match.student2_id %}pending{% endif %}">
-                            <div class="match-num">ПАРА #{{ match.match_number }}</div>
-
-                            <!-- Гравець 1 -->
-                            {% if match.student1_id and match.student1_id != 'BYE' %}
-                                <div class="player {% if match.winner_id == match.student1_id %}winner{% elif match.is_completed %}loser{% endif %}">
-                                    {% if match.winner_id == match.student1_id %}
-                                        <i class="bi bi-trophy-fill" style="color:#198754;font-size:0.8rem"></i>
-                                    {% else %}
-                                        <i class="bi bi-person-fill" style="color:#aaa;font-size:0.8rem"></i>
-                                    {% endif %}
-                                    {{ students_map[match.student1_id|string].full_name if match.student1_id|string in students_map else '?' }}
-                                </div>
-                            {% elif match.student1_id == 'BYE' %}
-                                <div class="player bye"><i class="bi bi-lightning-fill"></i> BYE</div>
-                            {% else %}
-                                <div class="player tbd"><i class="bi bi-hourglass-split"></i> Очікується...</div>
-                            {% endif %}
-
-                            <div class="player-divider"></div>
-
-                            <!-- Гравець 2 -->
-                            {% if match.student2_id == 'BYE' %}
-                                <div class="player bye"><i class="bi bi-lightning-fill"></i> BYE</div>
-                            {% elif match.student2_id %}
-                                <div class="player {% if match.winner_id == match.student2_id %}winner{% elif match.is_completed %}loser{% endif %}">
-                                    {% if match.winner_id == match.student2_id %}
-                                        <i class="bi bi-trophy-fill" style="color:#198754;font-size:0.8rem"></i>
-                                    {% else %}
-                                        <i class="bi bi-person-fill" style="color:#aaa;font-size:0.8rem"></i>
-                                    {% endif %}
-                                    {{ students_map[match.student2_id|string].full_name if match.student2_id|string in students_map else '?' }}
-                                </div>
-                            {% else %}
-                                <div class="player tbd"><i class="bi bi-hourglass-split"></i> Очікується...</div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- З'єднувальна лінія між раундами -->
-                {% if not loop.last %}
-                <div class="connector">
-                    <div class="connector-line"></div>
-                </div>
-                {% endif %}
-
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- ══ МОБІЛЬНИЙ: вертикальний список ══ -->
-        <div class="bracket-mobile">
-            {% for (round_num, round_name), matches_in_round in rounds %}
-            <div class="mobile-round">
-                <div class="mobile-round-title">
-                    {% if round_name == 'qualification' %}⚡ Кваліфікація
-                    {% elif round_name == 'final' %}🏆 Фінал
-                    {% else %}{{ round_name }} фіналу{% endif %}
-                </div>
-
-                {% for match in matches_in_round %}
-                <div class="mobile-match {% if match.is_completed %}completed{% endif %}">
-                    <div class="mobile-match-num">Пара #{{ match.match_number }}</div>
-
+                    {# Гравець 1 #}
                     {% if match.student1_id and match.student1_id != 'BYE' %}
-                        <div class="mobile-player {% if match.winner_id == match.student1_id %}winner{% elif match.is_completed %}loser{% endif %}">
-                            {% if match.winner_id == match.student1_id %}<i class="bi bi-trophy-fill"></i>
-                            {% else %}<i class="bi bi-person-fill"></i>{% endif %}
-                            {{ students_map[match.student1_id|string].full_name if match.student1_id|string in students_map else '?' }}
+                        <div class="player-row {% if w_id == p1_id %}winner{% elif match.is_completed %}loser{% endif %}"
+                             {% if p1_id %}data-pid="{{ p1_id }}" onmouseenter="highlightChain('{{ view_id }}','{{ p1_id }}')"{% endif %}>
+                            <span class="player-icon">{% if w_id == p1_id %}🏆{% else %}👤{% endif %}</span>
+                            <span class="player-name">{{ smap[p1_id].full_name if p1_id in smap else '?' }}</span>
                         </div>
                     {% else %}
-                        <div class="mobile-player tbd"><i class="bi bi-hourglass-split"></i> Очікується...</div>
+                        <div class="player-row tbd">
+                            <span class="player-icon">⏳</span>
+                            <span class="player-name">Очікується...</span>
+                        </div>
                     {% endif %}
 
-                    <div class="mobile-vs">vs</div>
-
-                    {% if match.student2_id == 'BYE' %}
-                        <div class="mobile-player bye"><i class="bi bi-lightning-fill"></i> BYE</div>
+                    {# Гравець 2 #}
+                    {% if is_bye %}
+                        <div class="player-row bye-row">
+                            <span class="player-icon">⚡</span>
+                            <span class="player-name">BYE</span>
+                        </div>
                     {% elif match.student2_id %}
-                        <div class="mobile-player {% if match.winner_id == match.student2_id %}winner{% elif match.is_completed %}loser{% endif %}">
-                            {% if match.winner_id == match.student2_id %}<i class="bi bi-trophy-fill"></i>
-                            {% else %}<i class="bi bi-person-fill"></i>{% endif %}
-                            {{ students_map[match.student2_id|string].full_name if match.student2_id|string in students_map else '?' }}
+                        <div class="player-row {% if w_id == p2_id %}winner{% elif match.is_completed %}loser{% endif %}"
+                             {% if p2_id %}data-pid="{{ p2_id }}" onmouseenter="highlightChain('{{ view_id }}','{{ p2_id }}')"{% endif %}>
+                            <span class="player-icon">{% if w_id == p2_id %}🏆{% else %}👤{% endif %}</span>
+                            <span class="player-name">{{ smap[p2_id].full_name if p2_id in smap else '?' }}</span>
                         </div>
                     {% else %}
-                        <div class="mobile-player tbd"><i class="bi bi-hourglass-split"></i> Очікується...</div>
+                        <div class="player-row tbd">
+                            <span class="player-icon">⏳</span>
+                            <span class="player-name">Очікується...</span>
+                        </div>
                     {% endif %}
                 </div>
-                {% endfor %}
-            </div>
-            {% endfor %}
-        </div>
 
-        {% else %}
-        <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle"></i>
-            Турнірна сітка ще не сформована.
-            {% if current_user.is_authenticated %}
-            <a href="{{ url_for('bracket_builder', class_name=class_name) }}" class="alert-link">Побудувати сітку</a>
-            {% endif %}
+                {# Спейсер між матчами — flex:1 для рівномірного розподілу #}
+                {% if not loop.last %}
+                <div class="match-spacer"
+                     id="sp-{{ view_id }}-{{ rnum }}-{{ match.match_number }}"></div>
+                {% endif %}
+            </div>
+        {% endfor %}
         </div>
+    </div>
+{% endfor %}
+</div>
+</div>
+
+{# ── МОБІЛЬНИЙ ── #}
+<div class="mobile-bracket">
+    <div class="mobile-nav">
+        <button class="mobile-nav-btn" id="mprev-{{ view_id }}"
+                onclick="mobNav('{{ view_id }}',-1)" disabled>← Попередній</button>
+        <span class="mobile-round-title" id="mtitle-{{ view_id }}">{{ round_names[0] if round_names else '' }}</span>
+        <button class="mobile-nav-btn" id="mnext-{{ view_id }}"
+                onclick="mobNav('{{ view_id }}',1)"
+                {% if bracket_rounds|list|length <= 1 %}disabled{% endif %}>Наступний →</button>
+    </div>
+
+    {% for (rnum, rname), matches_in_round in bracket_rounds %}
+    <div class="mobile-panel" id="mpanel-{{ view_id }}-{{ loop.index0 }}"
+         style="{% if not loop.first %}display:none{% endif %}">
+        {% for match in matches_in_round %}
+            {% set p1_id = match.student1_id|string if match.student1_id and match.student1_id != 'BYE' else '' %}
+            {% set p2_id = match.student2_id|string if match.student2_id and match.student2_id != 'BYE' else '' %}
+            {% set w_id = match.winner_id|string if match.winner_id else '' %}
+            {% set is_bye = match.student2_id == 'BYE' %}
+            <div class="mobile-match {% if match.is_completed %}completed{% endif %}">
+                <div class="mobile-match-num">Пара #{{ match.match_number }}</div>
+                {% if match.student1_id and match.student1_id != 'BYE' %}
+                    <div class="mobile-player {% if w_id == p1_id %}winner{% elif match.is_completed %}loser{% endif %}">
+                        {% if w_id == p1_id %}🏆{% else %}👤{% endif %}
+                        {{ smap[p1_id].full_name if p1_id in smap else '?' }}
+                    </div>
+                {% else %}
+                    <div class="mobile-player tbd">⏳ Очікується...</div>
+                {% endif %}
+                {% if is_bye %}
+                    <div class="mobile-player bye-row">⚡ BYE</div>
+                {% elif match.student2_id %}
+                    <div class="mobile-player {% if w_id == p2_id %}winner{% elif match.is_completed %}loser{% endif %}">
+                        {% if w_id == p2_id %}🏆{% else %}👤{% endif %}
+                        {{ smap[p2_id].full_name if p2_id in smap else '?' }}
+                    </div>
+                {% else %}
+                    <div class="mobile-player tbd">⏳ Очікується...</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    <input type="hidden" id="mcur-{{ view_id }}" value="0">
+    <input type="hidden" id="mtotal-{{ view_id }}" value="{{ bracket_rounds|list|length }}">
+    <script>
+    window['ROUND_NAMES_{{ view_id }}'] = {{ round_names | tojson }};
+    window['MATCH_DATA_{{ view_id }}'] = {{ all_m | tojson }};
+    </script>
+</div>
+{% endmacro %}
+
+{# ═══ ОСНОВНИЙ КОНТЕНТ ═══ #}
+<div class="container-fluid px-3">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Головна</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('classes') }}">Класи</a></li>
+            <li class="breadcrumb-item active">{{ class_name }} — Сітка</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0"><i class="bi bi-diagram-2"></i> Турнірна сітка: {{ class_name }}</h2>
+        <a href="{{ url_for('results') }}?class={{ class_name }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-bar-chart"></i> Результати
+        </a>
+    </div>
+
+    {% if rounds %}
+
+    {# Розділяємо на кваліфікацію і основну сітку #}
+    {% set qual_rounds = [] %}
+    {% set main_rounds = [] %}
+    {% for item in rounds %}
+        {% if item[0][1] == 'qualification' %}
+            {% set _ = qual_rounds.append(item) %}
+        {% else %}
+            {% set _ = main_rounds.append(item) %}
+        {% endif %}
+    {% endfor %}
+
+    {# Вкладки #}
+    <div class="bracket-tabs">
+        {% if qual_rounds %}
+        <button class="bracket-tab qual-tab {% if qual_rounds %}active{% endif %}"
+                onclick="switchTab('qual')" id="tab-qual">
+            ⚡ Кваліфікація
+        </button>
+        {% endif %}
+        <button class="bracket-tab {% if not qual_rounds %}active{% endif %}"
+                onclick="switchTab('main')" id="tab-main">
+            🏆 Основна сітка
+        </button>
+    </div>
+
+    {# Кваліфікація — активна за замовчуванням якщо є #}
+    {% if qual_rounds %}
+    <div class="bracket-view active" id="view-qual">
+        {{ render_bracket(qual_rounds, students_map, 'qual') }}
+    </div>
+    {% endif %}
+
+    {# Основна сітка #}
+    <div class="bracket-view {% if not qual_rounds %}active{% endif %}" id="view-main">
+        {% if main_rounds %}
+            {{ render_bracket(main_rounds, students_map, 'main') }}
+        {% else %}
+            <div class="alert alert-info">Основна сітка ще не сформована.</div>
         {% endif %}
     </div>
+
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i> Турнірна сітка ще не сформована.
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('bracket_builder', class_name=class_name) }}" class="alert-link">Побудувати сітку</a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
+
+<script>
+// ═══ ВКЛАДКИ ═══
+function switchTab(tab) {
+    document.querySelectorAll('.bracket-view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.bracket-tab').forEach(t => t.classList.remove('active'));
+    const view = document.getElementById('view-' + tab);
+    const tabEl = document.getElementById('tab-' + tab);
+    if (view) view.classList.add('active');
+    if (tabEl) tabEl.classList.add('active');
+    let p = 0;
+    function runAlignTab() {
+        alignRounds(tab);
+        p++;
+        if (p < 5) requestAnimationFrame(runAlignTab);
+        else drawConnectors(tab);
+    }
+    setTimeout(() => requestAnimationFrame(runAlignTab), 50);
+}
+
+// ═══ ВЕРТИКАЛЬНЕ ВИРІВНЮВАННЯ ═══
+function alignRounds(viewId) {
+    const canvas = document.getElementById('canvas-' + viewId);
+    if (!canvas) return;
+    const rCols = Array.from(canvas.querySelectorAll('.round-col'));
+    if (rCols.length < 2) return;
+
+    // Скидаємо все
+    rCols.forEach(col => {
+        const container = col.querySelector('.matches-container');
+        if (container) {
+            container.style.paddingTop = '0';
+            container.style.paddingBottom = '0';
+        }
+        col.querySelectorAll('.match-spacer').forEach(sp => {
+            sp.style.height = '12px';
+            sp.style.flex = 'none';
+        });
+    });
+
+    const firstContainer = rCols[0].querySelector('.matches-container');
+    if (!firstContainer) return;
+    const firstMatchBox = firstContainer.querySelector('.match-box');
+    if (!firstMatchBox) return;
+
+    const M = firstMatchBox.offsetHeight;
+    const G = 12;
+
+    // Доведена рекурсивна формула:
+    // padding(n) = (центр_top(n-1) + центр_bot(n-1)) / 2 - M/2
+    // де центр_top(n) = padding(n) + M/2
+    //    центр_bot(n) = padding(n) + M + spacer(n) + M/2
+    // spacer(n) = spacer(n-1)*2 + M
+    //
+    // Числа для M=90, G=12:
+    // col0: pad=0,   spacer=12
+    // col1: pad=51,  spacer=114
+    // col2: pad=153, spacer=318
+    // col3: pad=357, spacer=726
+
+    let curPadding = 0;
+    let curSpacer = G;
+
+    rCols.forEach((col, colIdx) => {
+        if (colIdx === 0) return;
+
+        const container = col.querySelector('.matches-container');
+        if (!container) return;
+
+        const centerTop = curPadding + M / 2;
+        const centerBot = curPadding + M + curSpacer + M / 2;
+        const newPadding = (centerTop + centerBot) / 2 - M / 2;
+        const newSpacer = curSpacer * 2 + M;
+
+        container.style.paddingTop = newPadding + 'px';
+        container.style.paddingBottom = newPadding + 'px';
+
+        container.querySelectorAll('.match-spacer').forEach(sp => {
+            sp.style.height = newSpacer + 'px';
+        });
+
+        curPadding = newPadding;
+        curSpacer = newSpacer;
+    });
+}
+
+// ═══ З'ЄДНУВАЛЬНІ ЛІНІЇ ═══
+function drawConnectors(viewId) {
+    const canvas = document.getElementById('canvas-' + viewId);
+    if (!canvas) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const rCols = Array.from(canvas.querySelectorAll('.round-col'));
+    const connCols = Array.from(canvas.querySelectorAll('.connector-col'));
+
+    connCols.forEach((conn, idx) => {
+        const leftCol = rCols[idx];
+        const rightCol = rCols[idx + 1];
+        if (!leftCol || !rightCol) return;
+
+        const leftMatches = leftCol.querySelectorAll('.match-item .match-box');
+        const rightMatches = rightCol.querySelectorAll('.match-item .match-box');
+
+        // Міряємо connRect ДО очищення
+        const connRect = conn.getBoundingClientRect();
+        if (connRect.width === 0) return;
+
+        conn.innerHTML = '';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.style.cssText = 'position:absolute;top:0;left:0;overflow:visible;pointer-events:none';
+        svg.setAttribute('width', connRect.width);
+        svg.setAttribute('height', Math.max(1, connRect.height));
+        conn.appendChild(svg);
+
+        const x1 = 0, x2 = connRect.width, mx = connRect.width / 2;
+
+        const drawPath = (y1, y2) => {
+            const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            p.setAttribute('d', `M${x1} ${y1} H${mx} V${y2} H${x2}`);
+            p.setAttribute('fill', 'none');
+            p.setAttribute('stroke', '#cbd5e1');
+            p.setAttribute('stroke-width', '1.5');
+            p.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(p);
+        };
+
+        rightMatches.forEach((rm, rIdx) => {
+            const lm1 = leftMatches[rIdx * 2];
+            const lm2 = leftMatches[rIdx * 2 + 1];
+            if (!lm1) return;
+
+            const rmR  = rm.getBoundingClientRect();
+            const lm1R = lm1.getBoundingClientRect();
+            const rmMidY  = rmR.top  + rmR.height  / 2 - connRect.top;
+            const lm1MidY = lm1R.top + lm1R.height / 2 - connRect.top;
+
+            drawPath(lm1MidY, rmMidY);
+            if (lm2) {
+                const lm2R = lm2.getBoundingClientRect();
+                drawPath(lm2R.top + lm2R.height / 2 - connRect.top, rmMidY);
+            }
+        });
+    });
+}
+
+// ═══ МОБІЛЬНА НАВІГАЦІЯ ═══
+function mobNav(viewId, dir) {
+    const curEl = document.getElementById('mcur-' + viewId);
+    const total = parseInt(document.getElementById('mtotal-' + viewId).value);
+    let cur = parseInt(curEl.value) + dir;
+    cur = Math.max(0, Math.min(total - 1, cur));
+
+    for (let i = 0; i < total; i++) {
+        const p = document.getElementById('mpanel-' + viewId + '-' + i);
+        if (p) p.style.display = i === cur ? 'block' : 'none';
+    }
+
+    const names = window['ROUND_NAMES_' + viewId] || [];
+    const titleEl = document.getElementById('mtitle-' + viewId);
+    if (titleEl && names[cur]) titleEl.textContent = names[cur];
+
+    document.getElementById('mprev-' + viewId).disabled = cur === 0;
+    document.getElementById('mnext-' + viewId).disabled = cur === total - 1;
+    curEl.value = cur;
+}
+
+// ═══ ПІДСВІТКА ЛАНЦЮЖКА ═══
+function highlightChain(viewId, pid) {
+    clearChain();
+    const canvas = document.getElementById('canvas-' + viewId);
+    if (!canvas) return;
+    canvas.classList.add('chain-active');
+
+    const matches = window['MATCH_DATA_' + viewId] || [];
+
+    // Збираємо всі матчі де гравець брав участь
+    const involvedMatchIds = new Set();
+    let current = pid;
+
+    // Пряма дорога (вперед — де переміг)
+    for (let pass = 0; pass < 10; pass++) {
+        let found = false;
+        for (const m of matches) {
+            if (m.p1 === current || m.p2 === current) {
+                involvedMatchIds.add(m.id);
+                if (m.w === current) {
+                    // Переміг — шукаємо де він з'явився у наступному раунді
+                    current = m.w;
+                    found = true;
+                }
+            }
+        }
+        if (!found) break;
+    }
+
+    // Підсвічуємо всі рядки з pid
+    canvas.querySelectorAll(`.player-row[data-pid="${pid}"]`).forEach(el => {
+        el.classList.add('in-chain');
+    });
+}
+
+function clearChain() {
+    document.querySelectorAll('.chain-active').forEach(el => el.classList.remove('chain-active'));
+    document.querySelectorAll('.in-chain').forEach(el => el.classList.remove('in-chain'));
+}
+
+// ═══ ІНІЦІАЛІЗАЦІЯ ═══
+function initBracket() {
+    const activeView = document.querySelector('.bracket-view.active');
+    if (!activeView) return;
+    const viewId = activeView.id.replace('view-', '');
+
+    // Запускаємо кілька разів щоб браузер встиг застосувати розміри
+    let passes = 0;
+    function runAlign() {
+        alignRounds(viewId);
+        passes++;
+        if (passes < 5) {
+            requestAnimationFrame(runAlign);
+        } else {
+            drawConnectors(viewId);
+        }
+    }
+    requestAnimationFrame(runAlign);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initBracket, 100);
+});
+
+window.addEventListener('resize', () => {
+    const activeView = document.querySelector('.bracket-view.active');
+    if (activeView) {
+        const viewId = activeView.id.replace('view-', '');
+        alignRounds(viewId);
+        drawConnectors(viewId);
+    }
+});
+</script>
 {% endblock %}

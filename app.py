@@ -214,16 +214,29 @@ def rules():
 @app.route('/superfinal')
 def superfinal():
     sf_matches = SuperfinalMatch.objects.order_by('match_number')
-    
+
+    # Збираємо фіналістів (як в адмінці)
+    classes_list = sorted(Student.objects.distinct('class_name'))
+    finalists = []
+    for class_name in classes_list:
+        final_match = Match.objects(
+            class_name=class_name,
+            round_name='final',
+            is_completed=True
+        ).first()
+        if final_match and final_match.winner_id:
+            try:
+                student = Student.objects.get(id=final_match.winner_id)
+                finalists.append({'class_name': class_name, 'student': student})
+            except:
+                pass
+
     # Таблиця результатів
-    participants = []
     all_student_ids = set()
     for m in sf_matches:
-        if m.student1_id:
-            all_student_ids.add(m.student1_id)
-        if m.student2_id:
-            all_student_ids.add(m.student2_id)
-    
+        if m.student1_id: all_student_ids.add(m.student1_id)
+        if m.student2_id: all_student_ids.add(m.student2_id)
+
     standings = {}
     for sid in all_student_ids:
         try:
@@ -231,7 +244,7 @@ def superfinal():
             standings[sid] = {'student': s, 'wins': 0, 'losses': 0, 'played': 0}
         except:
             pass
-    
+
     for m in sf_matches:
         if m.is_completed and m.winner_id:
             loser_id = m.student2_id if m.winner_id == m.student1_id else m.student1_id
@@ -241,12 +254,14 @@ def superfinal():
             if loser_id in standings:
                 standings[loser_id]['losses'] += 1
                 standings[loser_id]['played'] += 1
-    
+
     standings_list = sorted(standings.values(), key=lambda x: (-x['wins'], x['losses']))
-    
+
     return render_template('superfinal.html',
                            matches=sf_matches,
-                           standings=standings_list)
+                           standings=standings_list,
+                           finalists=finalists,
+                           all_classes=classes_list)
 
 
 # ==================== АДМІНКА ====================
@@ -658,6 +673,39 @@ def maybe_advance_round(match):
             _check_bye_and_save(new_next)
 
 
+def replace_superfinal_placeholder(class_name, real_winner_id):
+    """Замінює placeholder переможця в суперфіналі на реального гравця"""
+    placeholder = Student.objects(
+        class_name=class_name,
+        first_name='placeholder'
+    ).first()
+    if not placeholder:
+        return
+
+    placeholder_id = str(placeholder.id)
+
+    # Замінюємо в усіх матчах суперфіналу
+    updated = 0
+    for m in SuperfinalMatch.objects():
+        changed = False
+        if m.student1_id == placeholder_id:
+            m.student1_id = real_winner_id
+            changed = True
+        if m.student2_id == placeholder_id:
+            m.student2_id = real_winner_id
+            changed = True
+        if m.winner_id == placeholder_id:
+            m.winner_id = real_winner_id
+            changed = True
+        if changed:
+            m.save()
+            updated += 1
+
+    # Видаляємо placeholder
+    if updated > 0:
+        placeholder.delete()
+
+
 def _check_bye_and_save(m):
     """Перевіряє BYE і зберігає матч"""
     if m.student1_id and m.student2_id == 'BYE':
@@ -696,6 +744,10 @@ def update_match_result_ajax(match_id):
 
         # Перевіряємо чи треба створити наступний раунд
         maybe_advance_round(match)
+
+        # Якщо це фінальний матч — замінюємо placeholder в суперфіналі
+        if match.round_name == 'final':
+            replace_superfinal_placeholder(match.class_name, winner_id)
 
     return jsonify({'success': True})
 
@@ -846,11 +898,34 @@ def admin_superfinal():
         action = request.form.get('action')
         
         if action == 'generate':
-            # Отримуємо переможців фіналів кожного класу
             SuperfinalMatch.objects.delete()
-            
+
             finalist_ids = request.form.getlist('finalist_ids')
-            
+            # Додаємо placeholder-и для класів без фіналіста
+            all_cls = sorted(Student.objects.distinct('class_name'))
+            finalist_classes = []
+            for cls in all_cls:
+                fm = Match.objects(class_name=cls, round_name='final', is_completed=True).first()
+                if fm and fm.winner_id:
+                    finalist_classes.append(cls)
+
+            for cls in all_cls:
+                if cls not in finalist_classes:
+                    # Створюємо або знаходимо placeholder
+                    placeholder = Student.objects(
+                        class_name=cls,
+                        first_name='placeholder',
+                        last_name=f'Переможець {cls}'
+                    ).first()
+                    if not placeholder:
+                        placeholder = Student(
+                            first_name='placeholder',
+                            last_name=f'Переможець {cls}',
+                            class_name=cls,
+                            rating=0
+                        ).save()
+                    finalist_ids.append(str(placeholder.id))
+
             # Генеруємо кругову систему
             match_num = 1
             for i in range(len(finalist_ids)):
@@ -861,7 +936,7 @@ def admin_superfinal():
                         match_number=match_num
                     ).save()
                     match_num += 1
-            
+
             flash(f'Суперфінал згенеровано! {match_num - 1} матчів.', 'success')
         
         elif action == 'update_result':
@@ -895,10 +970,11 @@ def admin_superfinal():
             })
     
     sf_matches = SuperfinalMatch.objects.order_by('match_number')
-    
+
     return render_template('admin/superfinal.html',
                            finalists=finalists,
-                           sf_matches=sf_matches)
+                           sf_matches=sf_matches,
+                           all_classes=classes_list)
 
 
 if __name__ == '__main__':

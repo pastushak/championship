@@ -86,7 +86,7 @@
                 <h6 class="mb-0"><i class="bi bi-people-fill"></i> Учасники суперфіналу</h6>
             </div>
             <div class="card-body">
-                {% if finalists %}
+                {% set finalist_classes = finalists | map(attribute='class_name') | list %}
                 <div class="row g-3 mb-3">
                     {% for f in finalists %}
                     <div class="col-6 col-md-4 col-lg-2">
@@ -96,8 +96,21 @@
                         </div>
                     </div>
                     {% endfor %}
+                    {% for class_name in all_classes %}
+                        {% if class_name not in finalist_classes %}
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <div class="finalist-card" style="border-color:#dee2e6; color:#94a3b8; background:#f8fafc;">
+                                <span class="class-badge">{{ class_name }}</span>
+                                ⏳ Очікуємо<br>переможця
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                 </div>
+                {% if finalists %}
 
+                {% set total = all_classes|length %}
+                {% set total_pairs = total * (total - 1) // 2 %}
                 {% if sf_matches.count() == 0 %}
                 <form method="POST">
                     <input type="hidden" name="action" value="generate">
@@ -105,10 +118,15 @@
                     <input type="hidden" name="finalist_ids" value="{{ f.student.id }}">
                     {% endfor %}
                     <button type="submit" class="btn btn-warning"
-                            onclick="return confirm('Згенерувати {{ finalists|length * (finalists|length - 1) // 2 }} матчів суперфіналу?')">
-                        <i class="bi bi-shuffle"></i> Згенерувати матчі ({{ finalists|length * (finalists|length - 1) // 2 }} пар)
+                            onclick="return confirm('Згенерувати {{ total_pairs }} матчів суперфіналу (включно з placeholder)?')">
+                        <i class="bi bi-shuffle"></i> Згенерувати {{ total_pairs }} матчів
                     </button>
                 </form>
+                {% if finalists|length < all_classes|length %}
+                <small class="text-muted d-block mt-2">
+                    ⚠️ Placeholder для класів без фіналіста буде замінено автоматично після фіналу.
+                </small>
+                {% endif %}
                 {% else %}
                 <div class="d-flex gap-2 align-items-center">
                     <span class="text-success"><i class="bi bi-check-circle"></i> Матчі згенеровано</span>
@@ -128,7 +146,7 @@
                 {% else %}
                 <div class="alert alert-warning mb-0">
                     <i class="bi bi-exclamation-triangle"></i>
-                    Не всі класи мають переможців фіналу. Завершіть фінальні матчі класів щоб учасники з'явились тут.
+                    Ще немає жодного фіналіста. Завершіть фінальні матчі класів.
                 </div>
                 {% endif %}
             </div>
